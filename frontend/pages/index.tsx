@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import api from '../lib/api';
 import { useRouter } from 'next/router';
-import '../styles/output.css';
 
 
 export default function Login() {
