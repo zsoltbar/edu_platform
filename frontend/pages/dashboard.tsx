@@ -56,13 +56,8 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <Navbar />
+      <Navbar username={username} />
       <div className="p-8 max-w-7xl mx-auto">
-        {username && (
-          <div className="mb-2 text-xl font-semibold text-purple-700">
-            Üdvözlünk, {username}!
-          </div>
-        )}
         <h1 className="text-3xl font-bold mb-4 text-blue-700">Diák Dashboard</h1>
         {/* Display tasks grouped by subject, collapsible */}
         {Object.entries(groupedTasks).map(([subject, subjectTasks]) => (

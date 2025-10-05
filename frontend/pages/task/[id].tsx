@@ -82,24 +82,13 @@ export default function TaskDetail() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 relative">
-      <Navbar />
-      <div className="absolute top-6 right-8 z-10">
+      <Navbar username={username} />
+      <div className="absolute top-20 right-8 z-10">
         <div className="bg-purple-600 text-white px-4 py-2 rounded-full shadow font-bold text-lg">
           Pontszám: {scoreSum}
         </div>
       </div>
       <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-xl mx-auto mt-8">
-        {username && (
-          <div className="mb-4 text-xl font-semibold text-purple-700 text-center">
-            {username}
-          </div>
-        )}
-        <button
-          onClick={() => router.push("/dashboard")}
-          className="mb-4 bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded transition"
-        >
-          Vissza a Dashboardra
-        </button>
         <h1 className="text-2xl font-bold text-purple-700 mb-2">
           {task.title}
         </h1>
