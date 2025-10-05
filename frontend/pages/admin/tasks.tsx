@@ -6,6 +6,9 @@ interface Task {
   id: number;
   title: string;
   description: string;
+  subject: string;
+  class_grade: number;
+  difficulty: string;
 }
 
 export default function AdminTasks() {
@@ -15,6 +18,7 @@ export default function AdminTasks() {
   const [subject, setSubject] = useState('Magyar');
   const [classGrade, setClassGrade] = useState(8);
   const [difficulty, setDifficulty] = useState('Közepes');
+  const [editId, setEditId] = useState<number | null>(null);
 
   const getAuthHeader = () => {
     const token = localStorage.getItem("token");
@@ -45,6 +49,30 @@ export default function AdminTasks() {
       .catch(err => console.error(err));
   };
 
+  const handleEdit = (task: Task) => {
+    setEditId(task.id);
+    setTitle(task.title);
+    setDescription(task.description);
+    setSubject(task.subject || "Magyar");
+    setClassGrade(task.class_grade || 8);
+    setDifficulty(task.difficulty || "Közepes");
+  };
+
+  const handleSave = () => {
+    api.put(
+      `/tasks/${editId}`,
+      { title, description, subject, class_grade: classGrade, difficulty },
+      getAuthHeader()
+    )
+      .then(() => {
+        fetchTasks();
+        setEditId(null);
+        setTitle('');
+        setDescription('');
+      })
+      .catch(err => console.error(err));
+  };
+
   return (
     <div>
       <Navbar />
@@ -68,13 +96,20 @@ export default function AdminTasks() {
             <option value="Közepes">Közepes</option>
             <option value="Nehéz">Nehéz</option>
           </select>
-          <button onClick={handleCreate} className="bg-green-500 text-white px-4 py-2 rounded">Létrehoz</button>
+          {editId ? (
+            <button onClick={handleSave} className="bg-blue-500 text-white px-4 py-2 rounded">Mentés</button>
+          ) : (
+            <button onClick={handleCreate} className="bg-green-500 text-white px-4 py-2 rounded">Létrehoz</button>
+          )}
         </div>
         <ul>
           {tasks.map(task => (
             <li key={task.id} className="border p-2 mb-2 flex justify-between">
               <span>{task.title}</span>
-              <button onClick={() => handleDelete(task.id)} className="bg-red-500 text-white px-2 rounded">Töröl</button>
+              <div>
+                <button onClick={() => handleEdit(task)} className="bg-yellow-500 text-white px-2 rounded mr-2">Szerkeszt</button>
+                <button onClick={() => handleDelete(task.id)} className="bg-red-500 text-white px-2 rounded">Töröl</button>
+              </div>
             </li>
           ))}
         </ul>

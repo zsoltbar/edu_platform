@@ -37,6 +37,22 @@ def create_task(task: TaskCreate):
     db.refresh(new_task)
     return {"message": "Task created successfully"}
 
+# Admin: feladat módosítása
+@router.put("/{task_id}")
+def update_task(task_id: int, task: TaskCreate):
+    existing_task = db.query(models.Task).filter(models.Task.id == task_id).first()
+    if not existing_task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    existing_task.title = task.title
+    existing_task.description = task.description
+    existing_task.subject = task.subject
+    existing_task.class_grade = task.class_grade
+    existing_task.difficulty = task.difficulty
+    existing_task.created_by = 1  # Admin ID (később JWT-ből)
+    db.commit()
+    return {"message": "Task updated successfully"}
+
 # Admin: feladat törlés
 @router.delete("/{task_id}")
 def delete_task(task_id: int):
