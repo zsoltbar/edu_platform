@@ -16,6 +16,10 @@ export default function TaskDetail() {
   const [hintVisible, setHintVisible] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
 
+  // Countdown duration in seconds before showing the next question.
+  // Increased from 5 to 10 seconds to give students more time to review the explanation.
+  const NEXT_QUESTION_COUNTDOWN = 10;
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -57,7 +61,7 @@ export default function TaskDetail() {
 
         setScoreSum(prev => prev + score);
         setLastScore(score);
-        setCountdown(10);
+        setCountdown(NEXT_QUESTION_COUNTDOWN);
         const interval = setInterval(() => {
           setCountdown(prev => {
             if (prev === 1) {
@@ -124,10 +128,16 @@ export default function TaskDetail() {
         />
         <button
           onClick={handleNextQuestion}
-          className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded mt-2 ml-2 transition"
+          className={`bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded mt-2 ml-2 transition ${
+            buttonDisabled ? "opacity-50 cursor-not-allowed" : ""
+          }`}
           disabled={buttonDisabled || !answer.trim()}
         >
-          Ellenőrzés és Következő kérdés
+          {buttonDisabled
+            ? "Betöltés..."
+            : !answer.trim()
+            ? "Írd be a válaszod"
+            : "Ellenőrzés és Következő kérdés"}
         </button>
         {explanation && (
           <div className="mt-4 p-4 border rounded bg-gray-100">
