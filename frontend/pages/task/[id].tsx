@@ -8,17 +8,14 @@ export default function TaskDetail() {
 
   const [task, setTask] = useState<any>(null);
   const [answer, setAnswer] = useState("");
-  const [explanation, setExplanation] = useState("");
-  const [countdown, setCountdown] = useState<number | null>(null);
+  const [tutorReply, setTutorReply] = useState<any>(null);
+  const [explanation, setExplanation] = useState<string>("");
   const [username, setUsername] = useState<string>("");
   const [scoreSum, setScoreSum] = useState(0);
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [hintVisible, setHintVisible] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
-
-  // Countdown duration in seconds before showing the next question.
-  // Increased from 5 to 10 seconds to give students more time to review the explanation.
-  const NEXT_QUESTION_COUNTDOWN = 10;
+  const [showNextButton, setShowNextButton] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -51,8 +48,9 @@ export default function TaskDetail() {
     const authHeader = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
     api.post("/ai-tutor/next-question", { id: task.id, previous_question: task.title, student_answer: answer }, authHeader)
       .then(res => {
+        setTutorReply(res.data);
         setExplanation(res.data.explanation);
-
+        
         // divide score by 2 if hint was used
         let score = Number(res.data.score) || 0;
         if (hintVisible && score > 0) {
@@ -61,27 +59,22 @@ export default function TaskDetail() {
 
         setScoreSum(prev => prev + score);
         setLastScore(score);
-        setCountdown(NEXT_QUESTION_COUNTDOWN);
-        const interval = setInterval(() => {
-          setCountdown(prev => {
-            if (prev === 1) {
-              clearInterval(interval);
-              setTask((prevTask: any) => ({ ...prevTask, title: res.data.next_question }));
-              setTask((prevTask: any) => ({ ...prevTask, description: res.data.next_description }));
-              setHintVisible(false);
-              setAnswer("");
-              setExplanation("");
-              setButtonDisabled(false); // Enable button after new question appears
-              return null;
-            }
-            return prev ? prev - 1 : null;
-          });
-        }, 1000);
+        setShowNextButton(true);
       })
       .catch(err => {
         setButtonDisabled(false);
         console.error(err);
       });
+  };
+
+  const handleLoadNext = () => {
+    setTask((prevTask: any) => ({ ...prevTask, title: tutorReply.next_question }));
+    setTask((prevTask: any) => ({ ...prevTask, description: tutorReply.next_description }));
+    setHintVisible(false);
+    setAnswer("");
+    setExplanation("");
+    setButtonDisabled(false);
+    setShowNextButton(false);
   };
 
   if (!task) return <div>Loading...</div>;
@@ -139,6 +132,15 @@ export default function TaskDetail() {
             ? "Írd be a válaszod"
             : "Ellenőrzés és Következő kérdés"}
         </button>
+        {showNextButton && (
+          <button
+            onClick={handleLoadNext}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mt-2 ml-2 transition"
+          >
+
+            Következő kérdés betöltése
+          </button>
+        )}
         {explanation && (
           <div className="mt-4 p-4 border rounded bg-gray-100">
             <strong>Magyarázat:</strong> {explanation}
@@ -152,11 +154,6 @@ export default function TaskDetail() {
                 >
                 Elért pontszám: {lastScore}
                 </div>
-            )}
-            {countdown !== null && (
-              <div className="mt-2 text-lg text-center text-purple-700">
-                Következő kérdés {countdown} másodperc múlva...
-              </div>
             )}
           </div>
         )}
