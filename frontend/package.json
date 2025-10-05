@@ -6,9 +6,12 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:css": "tailwindcss -i ./styles/globals.css -o ./dist/output.css --minify",
+    "watch:css": "tailwindcss -i ./styles/globals.css -o ./dist/output.css --watch"
   },
   "dependencies": {
+    "@tailwindcss/cli": "^4.1.14",
     "axios": "^1.12.2",
     "next": "15.5.4",
     "react": "19.1.0",
