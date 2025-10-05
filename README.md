@@ -6,7 +6,7 @@ Contents:
 - FastAPI app with basic auth (register/login)
 - SQLite dev DB (configurable)
 
-How to run backend:
+How to run backend - http://localhost:8000/docs
 1. python3 -m venv .venv
 2. . .venv/bin/activate
 3. pip install -r requirements.txt
