@@ -19,6 +19,7 @@ export default function AdminTasks() {
   const [classGrade, setClassGrade] = useState(8);
   const [difficulty, setDifficulty] = useState('Közepes');
   const [editId, setEditId] = useState<number | null>(null);
+  const [collapsed, setCollapsed] = useState<{ [subject: string]: boolean }>({});
 
   const getAuthHeader = () => {
     const token = localStorage.getItem("token");
@@ -73,6 +74,26 @@ export default function AdminTasks() {
       .catch(err => console.error(err));
   };
 
+  // Group tasks by subject
+  const groupedTasks: { [subject: string]: Task[] } = tasks.reduce((acc, task) => {
+    if (!acc[task.subject]) acc[task.subject] = [];
+    acc[task.subject].push(task);
+    return acc;
+  }, {} as { [subject: string]: Task[] });
+
+  // Collapse all groups by default when tasks change
+  useEffect(() => {
+    const initialCollapsed: { [subject: string]: boolean } = {};
+    Object.keys(groupedTasks).forEach(subject => {
+      initialCollapsed[subject] = true;
+    });
+    setCollapsed(initialCollapsed);
+  }, [tasks]);
+
+  const toggleCollapse = (subject: string) => {
+    setCollapsed(prev => ({ ...prev, [subject]: !prev[subject] }));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-pink-50 to-purple-100">
       <Navbar />
@@ -102,23 +123,37 @@ export default function AdminTasks() {
             <button onClick={handleCreate} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition">Létrehoz</button>
           )}
         </div>
-        <ul className="space-y-4">
-          {tasks.map(task => (
-            <li key={task.id} className="bg-white rounded-xl shadow-md p-4 flex justify-between items-center hover:shadow-lg transition-shadow">
-              <div>
-                <div className="font-semibold text-lg text-purple-800">{task.title}</div>
-                <div className="text-gray-600 text-sm">{task.description}</div>
-                <div className="text-xs text-gray-400 mt-1">
-                  {task.subject} • {task.class_grade}. osztály • {task.difficulty}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => handleEdit(task)} className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded transition">Szerkeszt</button>
-                <button onClick={() => handleDelete(task.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded transition">Töröl</button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        {/* Grouped and collapsible tasks */}
+        {Object.entries(groupedTasks).map(([subject, subjectTasks]) => (
+          <div key={subject} className="mb-8">
+            <button
+              onClick={() => toggleCollapse(subject)}
+              className="w-full text-left text-2xl font-semibold mb-4 text-purple-800 bg-purple-100 rounded px-4 py-2 hover:bg-purple-200 transition flex items-center justify-between"
+            >
+              <span>{subject}</span>
+              <span className="ml-2 text-lg">{collapsed[subject] ? "▼" : "▲"}</span>
+            </button>
+            {!collapsed[subject] && (
+              <ul className="space-y-4">
+                {subjectTasks.map(task => (
+                  <li key={task.id} className="bg-white rounded-xl shadow-md p-4 flex justify-between items-center hover:shadow-lg transition-shadow">
+                    <div>
+                      <div className="font-semibold text-lg text-purple-800">{task.title}</div>
+                      <div className="text-gray-600 text-sm">{task.description}</div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {task.subject} • {task.class_grade}. osztály • {task.difficulty}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleEdit(task)} className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded transition">Szerkeszt</button>
+                      <button onClick={() => handleDelete(task.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded transition">Töröl</button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
