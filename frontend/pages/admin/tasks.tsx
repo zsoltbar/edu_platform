@@ -74,41 +74,47 @@ export default function AdminTasks() {
   };
 
   return (
-    <div>
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-pink-50 to-purple-100">
       <Navbar />
-      <div className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Admin Feladatok</h1>
-        <div className="mb-4">
-          <input className="border p-2 mr-2" placeholder="Cím" value={title} onChange={e => setTitle(e.target.value)} />
-          <input className="border p-2 mr-2" placeholder="Leírás" value={description} onChange={e => setDescription(e.target.value)} />
-          <select className="border p-2 mr-2" value={subject} onChange={e => setSubject(e.target.value)}>
+      <div className="p-8 max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6 text-purple-700 text-center">Admin Feladatok</h1>
+        <div className="mb-8 bg-white rounded-xl shadow-lg p-6 flex flex-wrap gap-4 items-center">
+          <input className="border p-2 rounded w-40" placeholder="Cím" value={title} onChange={e => setTitle(e.target.value)} />
+          <input className="border p-2 rounded w-56" placeholder="Leírás" value={description} onChange={e => setDescription(e.target.value)} />
+          <select className="border p-2 rounded w-32" value={subject} onChange={e => setSubject(e.target.value)}>
             <option value="Magyar">Magyar</option>
             <option value="Matematika">Matematika</option>
             <option value="Történelem">Történelem</option>
           </select>
-          <select className="border p-2 mr-2" value={classGrade} onChange={e => setClassGrade(Number(e.target.value))}>
+          <select className="border p-2 rounded w-24" value={classGrade} onChange={e => setClassGrade(Number(e.target.value))}>
             <option value={4}>4</option>
             <option value={6}>6</option>
             <option value={8}>8</option>
           </select>
-          <select className="border p-2 mr-2" value={difficulty} onChange={e => setDifficulty(e.target.value)}>
+          <select className="border p-2 rounded w-28" value={difficulty} onChange={e => setDifficulty(e.target.value)}>
             <option value="Könnyű">Könnyű</option>
             <option value="Közepes">Közepes</option>
             <option value="Nehéz">Nehéz</option>
           </select>
           {editId ? (
-            <button onClick={handleSave} className="bg-blue-500 text-white px-4 py-2 rounded">Mentés</button>
+            <button onClick={handleSave} className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition">Mentés</button>
           ) : (
-            <button onClick={handleCreate} className="bg-green-500 text-white px-4 py-2 rounded">Létrehoz</button>
+            <button onClick={handleCreate} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded transition">Létrehoz</button>
           )}
         </div>
-        <ul>
+        <ul className="space-y-4">
           {tasks.map(task => (
-            <li key={task.id} className="border p-2 mb-2 flex justify-between">
-              <span>{task.title}</span>
+            <li key={task.id} className="bg-white rounded-xl shadow-md p-4 flex justify-between items-center hover:shadow-lg transition-shadow">
               <div>
-                <button onClick={() => handleEdit(task)} className="bg-yellow-500 text-white px-2 rounded mr-2">Szerkeszt</button>
-                <button onClick={() => handleDelete(task.id)} className="bg-red-500 text-white px-2 rounded">Töröl</button>
+                <div className="font-semibold text-lg text-purple-800">{task.title}</div>
+                <div className="text-gray-600 text-sm">{task.description}</div>
+                <div className="text-xs text-gray-400 mt-1">
+                  {task.subject} • {task.class_grade}. osztály • {task.difficulty}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => handleEdit(task)} className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded transition">Szerkeszt</button>
+                <button onClick={() => handleDelete(task.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded transition">Töröl</button>
               </div>
             </li>
           ))}
