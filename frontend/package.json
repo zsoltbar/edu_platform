@@ -6,9 +6,12 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "build:css": "tailwindcss -i ./app/globals.css -o ./dist/output.css --minify",
+    "watch:css": "tailwindcss -i ./app/globals.css -o ./dist/output.css --watch"
   },
   "dependencies": {
+    "@tailwindcss/cli": "^4.1.14",
     "axios": "^1.12.2",
     "next": "15.5.4",
     "react": "19.1.0",
@@ -17,8 +20,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
-    "@tailwindcss/postcss7-compat": "^2.2.17",
+    "@tailwindcss/postcss": "^4.1.14",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
