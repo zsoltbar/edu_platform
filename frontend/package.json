@@ -7,8 +7,8 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "build:css": "tailwindcss -i ./app/globals.css -o ./dist/output.css --minify",
-    "watch:css": "tailwindcss -i ./app/globals.css -o ./dist/output.css --watch"
+    "build:css": "tailwindcss -i ./app/globals.css -o ./app/output.css --minify",
+    "watch:css": "tailwindcss -i ./app/globals.css -o ./app/output.css --watch"
   },
   "dependencies": {
     "@tailwindcss/cli": "^4.1.14",
