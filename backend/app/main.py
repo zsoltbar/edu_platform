@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import users, tasks, ai_tutor
 
 app = FastAPI(
-    title="Edu Platform Backend",
+    title="OkosTanítás Platform Backend",
     description="Online felvételi gyakorló platform diákoknak",
     version="1.0.0",
     debug=True
