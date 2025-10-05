@@ -12,9 +12,17 @@ export default function AdminTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [subject, setSubject] = useState('Magyar');
+  const [classGrade, setClassGrade] = useState(8);
+  const [difficulty, setDifficulty] = useState('Közepes');
+
+  const getAuthHeader = () => {
+    const token = localStorage.getItem("token");
+    return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+  };
 
   const fetchTasks = () => {
-    api.get('/tasks')
+    api.get('/tasks', getAuthHeader())
       .then(res => setTasks(res.data))
       .catch(err => console.error(err));
   };
@@ -22,13 +30,17 @@ export default function AdminTasks() {
   useEffect(() => { fetchTasks(); }, []);
 
   const handleCreate = () => {
-    api.post('/tasks', { title, description, subject: 'Math', class_grade: 6, difficulty: 'Medium' })
+    api.post(
+      '/tasks',
+      { title, description, subject, class_grade: classGrade, difficulty },
+      getAuthHeader()
+    )
       .then(() => { fetchTasks(); setTitle(''); setDescription(''); })
       .catch(err => console.error(err));
   };
 
   const handleDelete = (id: number) => {
-    api.delete(`/tasks/${id}`)
+    api.delete(`/tasks/${id}`, getAuthHeader())
       .then(() => fetchTasks())
       .catch(err => console.error(err));
   };
@@ -41,6 +53,21 @@ export default function AdminTasks() {
         <div className="mb-4">
           <input className="border p-2 mr-2" placeholder="Cím" value={title} onChange={e => setTitle(e.target.value)} />
           <input className="border p-2 mr-2" placeholder="Leírás" value={description} onChange={e => setDescription(e.target.value)} />
+          <select className="border p-2 mr-2" value={subject} onChange={e => setSubject(e.target.value)}>
+            <option value="Magyar">Magyar</option>
+            <option value="Matematika">Matematika</option>
+            <option value="Történelem">Történelem</option>
+          </select>
+          <select className="border p-2 mr-2" value={classGrade} onChange={e => setClassGrade(Number(e.target.value))}>
+            <option value={4}>4</option>
+            <option value={6}>6</option>
+            <option value={8}>8</option>
+          </select>
+          <select className="border p-2 mr-2" value={difficulty} onChange={e => setDifficulty(e.target.value)}>
+            <option value="Könnyű">Könnyű</option>
+            <option value="Közepes">Közepes</option>
+            <option value="Nehéz">Nehéz</option>
+          </select>
           <button onClick={handleCreate} className="bg-green-500 text-white px-4 py-2 rounded">Létrehoz</button>
         </div>
         <ul>

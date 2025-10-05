@@ -5,6 +5,7 @@ python-dotenv            # .env fájlok kezelése
 passlib[argon2]          # jelszóhash argon2 algoritmussal
 python-jose[cryptography] # JWT tokenekhez
 pydantic                 # adatmodellek (FastAPI dependency)
+pydantic-settings        # konfiguráció kezeléshez
 openai                   # AI tutor integrációhoz
 slowapi                  # rate-limit decorator a AI tutorhoz
 redis                    # napi kvóta tárolása Redisben

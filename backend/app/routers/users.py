@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from app import models, database, auth
+from app.models import User
 from jose import jwt, JWTError
 
 router = APIRouter()
@@ -15,6 +16,18 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+class UserOut(BaseModel):
+    id: int
+    name: str
+    email: str
+
+class Config:
+    orm_mode = True
+
+@router.get("/me", response_model=UserOut)
+def read_users_me(current_user: User = Depends(auth.get_current_user)):
+    return current_user
 
 # Regisztráció
 @router.post("/register")

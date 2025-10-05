@@ -12,14 +12,18 @@ export default function TaskDetail() {
 
   useEffect(() => {
     if (id) {
-      api.get(`/tasks/${id}`)
+      const token = localStorage.getItem("token");
+      const authHeader = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+      api.get(`/tasks/${id}`, authHeader)
         .then(res => setTask(res.data))
         .catch(err => console.error(err));
     }
   }, [id]);
 
   const handleAITutor = () => {
-    api.post("/ai-tutor", { question: task.description, student_answer: answer })
+    const token = localStorage.getItem("token");
+    const authHeader = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    api.post("/ai-tutor", { question: task.description, student_answer: answer }, authHeader)
       .then(res => setExplanation(res.data.explanation))
       .catch(err => console.error(err));
   };

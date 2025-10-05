@@ -8,6 +8,7 @@ router = APIRouter()
 db = database.SessionLocal()
 
 class TaskCreate(BaseModel):
+    id: int = None
     title: str
     description: str
     subject: str
