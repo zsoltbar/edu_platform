@@ -11,6 +11,8 @@ export default function TaskDetail() {
   const [explanation, setExplanation] = useState("");
   const [countdown, setCountdown] = useState<number | null>(null);
   const [username, setUsername] = useState<string>("");
+  const [scoreSum, setScoreSum] = useState(0);
+  const [lastScore, setLastScore] = useState<number | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -43,6 +45,9 @@ export default function TaskDetail() {
     api.post("/ai-tutor/next-question", { id: task.id, previous_question: task.title, student_answer: answer }, authHeader)
       .then(res => {
         setExplanation(res.data.explanation);
+        const score = Number(res.data.score) || 0;
+        setScoreSum(prev => prev + score);
+        setLastScore(score);
         setCountdown(5);
         const interval = setInterval(() => {
           setCountdown(prev => {
@@ -64,7 +69,12 @@ export default function TaskDetail() {
   if (!task) return <div>Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 relative">
+      <div className="absolute top-6 right-8 z-10">
+        <div className="bg-purple-600 text-white px-4 py-2 rounded-full shadow font-bold text-lg">
+          Pontszám: {scoreSum}
+        </div>
+      </div>
       <div className="bg-white rounded-xl shadow-lg p-8 w-full max-w-xl mx-auto mt-8">
         {username && (
           <div className="mb-4 text-xl font-semibold text-purple-700 text-center">
@@ -96,6 +106,11 @@ export default function TaskDetail() {
         {explanation && (
           <div className="mt-4 p-4 border rounded bg-gray-100">
             <strong>Magyarázat:</strong> {explanation}
+            {lastScore !== null && (
+              <div className="mt-2 text-lg text-purple-700 text-center">
+                Elért pontszám: {lastScore}
+              </div>
+            )}
             {countdown !== null && (
               <div className="mt-2 text-lg text-center text-purple-700">
                 Következő kérdés {countdown} másodperc múlva...

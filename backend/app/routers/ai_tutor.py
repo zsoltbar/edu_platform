@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 from app.routers.tasks import get_task, create_task, TaskCreate, get_tasks
 import difflib
+import json
 
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -36,29 +37,66 @@ class NextQuestionRequest(BaseModel):
 @router.post("/next-question")
 def generate_next_question(req: NextQuestionRequest):
     task = get_task(req.id)  # Lookup the task by id
+
+    role = f"""
+        You are a {task.subject} tutor for 10-14 year old students. 
+        Based on the student's previous answer, generate a suitable next question in {task.subject} topic to help them learn.
+        Answer in Hungarian if the question is in Hungarian, otherwise answer in English.
+        """
+    prompt = f"""
+        Previous Question: {req.previous_question}
+        Student Answer: {req.student_answer}
+        Please provide feedback and the next possible question, and give a description addressed to students for the next question both in Hungarian.
+        Provide 0-109 score for the student's answer as well. 
+        Format the entire response as dictionary with the following fields:
+            Feedback: ...
+            Next Question: ...
+            Description: ...
+            Score: ...
+        """
     response = openai.chat.completions.create(
         model="gpt-4o",
         messages=[
-            {"role": "system", "content": f"You are a {task.subject} tutor for 10-14 year old students. Based on the student's previous answer, generate a suitable next question in {task.subject} topic in Hungarian to help them learn."},
-            {"role": "user", "content": f"Previous Question: {req.previous_question}\nStudent Answer: {req.student_answer}\nPlease provide feedback after 'Feedback:' and the next possible question after 'Next Question:', and give a 'Description:' addressed to students for the next question both in Hungarian."}
+            {"role": "system", "content": role},
+            {"role": "user", "content": prompt}
         ],
         max_tokens=1000
     )
-    content = response.choices[0].message.content
 
+    content = response.choices[0].message.content
+    
     feedback = ""
     next_question = ""
     description = ""
-    if "Feedback:" in content and "Next Question:" in content and "Description:" in content:
-        feedback_start = content.find("Feedback:")
-        next_question_start = content.find("Next Question:") 
-        description_start = content.find("Description:")
-
-        feedback = content[feedback_start + len("Feedback:"):next_question_start].strip()
-        next_question = content[next_question_start + len("Next Question:"): description_start].strip()
-        description = content[description_start + len("Description:"):].strip()
-    else:
+    score = ""
+    try:
+        # The string must start with a valid JSON object (e.g., '{...}')
+        # If the string starts with '{', it's likely valid JSON
+        if content.strip().startswith("{"):
+            data = json.loads(content)
+        else:
+            # Try to extract JSON from the string if it contains extra text
+            json_start = content.find("{")
+            json_end = content.rfind("}")
+            if json_start != -1 and json_end != -1:
+                json_str = content[json_start:json_end+1]
+                data = json.loads(json_str)
+            else:
+                raise ValueError("Response does not contain valid JSON.")
+        feedback = data.get("Feedback", "")
+        next_question = data.get("Next Question", "")
+        description = data.get("Description", "")
+        score = data.get("Score", "")
+        # Ensure score is max 100
+        try:
+            score = min(int(float(score)), 100)
+        except Exception:
+            score = 0
+    except Exception:
         feedback = content
+        next_question = ""
+        description = ""
+        score = 0
 
     # Check for similar questions in the database (80% similarity threshold)
     similar_found = False
@@ -86,7 +124,8 @@ def generate_next_question(req: NextQuestionRequest):
         "explanation": feedback,
         "next_question": next_question,
         "next_description": description,
-        "similar_found": similar_found
+        "similar_found": similar_found,
+        "score": score
     }
 
 class GenerateTaskRequest(BaseModel):
