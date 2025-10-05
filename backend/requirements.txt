@@ -1,0 +1,11 @@
+fastapi                  # a web framework
+uvicorn[standard]        # ASGI szerver futtatáshoz
+SQLAlchemy>=1.4          # ORM a DB kezeléshez
+python-dotenv            # .env fájlok kezelése
+passlib[argon2]          # jelszóhash argon2 algoritmussal
+python-jose[cryptography] # JWT tokenekhez
+pydantic                 # adatmodellek (FastAPI dependency)
+openai                   # AI tutor integrációhoz
+slowapi                  # rate-limit decorator a AI tutorhoz
+redis                    # napi kvóta tárolása Redisben
+python-multipart         # form-data kezelés (pl. OAuth2PasswordRequestForm)
