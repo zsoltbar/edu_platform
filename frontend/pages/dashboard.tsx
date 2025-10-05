@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import api from "../lib/api";
 import TaskCard from "../components/TaskCard";
 import Navbar from "../components/Navbar";
@@ -16,17 +17,22 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [username, setUsername] = useState<string>("");
   const [collapsed, setCollapsed] = useState<{ [subject: string]: boolean }>({});
+  const router = useRouter();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    const authHeader = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    if (!token) {
+      router.replace("/");
+      return;
+    }
+    const authHeader = { headers: { Authorization: `Bearer ${token}` } };
     api.get("/tasks", authHeader)
       .then(res => setTasks(res.data))
       .catch(err => console.error(err));
     api.get("/users/me", authHeader)
       .then(res => setUsername(res.data.name))
       .catch(err => console.error(err));
-  }, []);
+  }, [router]);
 
   // Group tasks by subject
   const groupedTasks: { [subject: string]: Task[] } = tasks.reduce((acc, task) => {
@@ -69,10 +75,20 @@ export default function Dashboard() {
               <span className="ml-2 text-lg">{collapsed[subject] ? "▼" : "▲"}</span>
             </button>
             {!collapsed[subject] && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {subjectTasks.map(task => (
-                  <div key={task.id} className="bg-white rounded-xl shadow-lg p-6 hover:shadow-2xl transition-shadow duration-200">
-                    <TaskCard task={task} />
+                  <div
+                    key={task.id}
+                    className="bg-white rounded-xl shadow-lg p-6 flex flex-col justify-between border border-gray-100 transition-all duration-200 hover:shadow-2xl hover:border-purple-300 hover:scale-[1.03] cursor-pointer"
+                    onClick={() => window.location.href = `/task/${task.id}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-lg text-purple-800 underline break-words">{task.title}</div>
+                      <div className="text-gray-600 text-sm mt-1 break-words">{task.description}</div>
+                      <div className="text-xs text-gray-400 mt-2">
+                        {task.subject} • {task.class_grade}. osztály • {task.difficulty}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>

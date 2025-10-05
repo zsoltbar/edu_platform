@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/router';
 import api from '../../lib/api';
 import Navbar from '../../components/Navbar';
 
@@ -20,6 +21,7 @@ export default function AdminTasks() {
   const [difficulty, setDifficulty] = useState('Közepes');
   const [editId, setEditId] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState<{ [subject: string]: boolean }>({});
+  const router = useRouter();
 
   const getAuthHeader = () => {
     const token = localStorage.getItem("token");
@@ -32,7 +34,14 @@ export default function AdminTasks() {
       .catch(err => console.error(err));
   };
 
-  useEffect(() => { fetchTasks(); }, []);
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.replace("/");
+      return;
+    }
+    fetchTasks();
+  }, [router]);
 
   const handleCreate = () => {
     api.post(
@@ -134,17 +143,21 @@ export default function AdminTasks() {
               <span className="ml-2 text-lg">{collapsed[subject] ? "▼" : "▲"}</span>
             </button>
             {!collapsed[subject] && (
-              <ul className="space-y-4">
+              <ul className="space-y-5 flex flex-col">
                 {subjectTasks.map(task => (
-                  <li key={task.id} className="bg-white rounded-xl shadow-md p-4 flex justify-between items-center hover:shadow-lg transition-shadow">
-                    <div>
-                      <div className="font-semibold text-lg text-purple-800">{task.title}</div>
-                      <div className="text-gray-600 text-sm">{task.description}</div>
-                      <div className="text-xs text-gray-400 mt-1">
+                  <li
+                    key={task.id}
+                    className="bg-white rounded-xl shadow-lg p-6 flex justify-between items-center border border-gray-100 transition-all duration-200 hover:shadow-2xl hover:border-purple-300 hover:scale-[1.03] cursor-pointer"
+                    onClick={() => handleEdit(task)}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-lg text-purple-800 underline break-words">{task.title}</div>
+                      <div className="text-gray-600 text-sm mt-1 break-words">{task.description}</div>
+                      <div className="text-xs text-gray-400 mt-2">
                         {task.subject} • {task.class_grade}. osztály • {task.difficulty}
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 ml-4 shrink-0" onClick={e => e.stopPropagation()}>
                       <button onClick={() => handleEdit(task)} className="bg-yellow-400 hover:bg-yellow-500 text-white px-3 py-1 rounded transition">Szerkeszt</button>
                       <button onClick={() => handleDelete(task.id)} className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded transition">Töröl</button>
                     </div>
