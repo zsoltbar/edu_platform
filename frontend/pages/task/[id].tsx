@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import api from "../../lib/api";
+import Navbar from "../../components/Navbar";
 
 export default function TaskDetail() {
   const router = useRouter();
@@ -81,6 +82,7 @@ export default function TaskDetail() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 relative">
+      <Navbar />
       <div className="absolute top-6 right-8 z-10">
         <div className="bg-purple-600 text-white px-4 py-2 rounded-full shadow font-bold text-lg">
           Pontszám: {scoreSum}
@@ -119,6 +121,7 @@ export default function TaskDetail() {
           value={answer}
           onChange={(e) => setAnswer(e.target.value)}
         />
+        {!showNextButton && (
         <button
           onClick={handleNextQuestion}
           className={`bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded mt-2 ml-2 transition ${
@@ -132,12 +135,12 @@ export default function TaskDetail() {
             ? "Írd be a válaszod"
             : "Ellenőrzés és Következő kérdés"}
         </button>
+        )}
         {showNextButton && (
           <button
             onClick={handleLoadNext}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mt-2 ml-2 transition"
           >
-
             Következő kérdés betöltése
           </button>
         )}
