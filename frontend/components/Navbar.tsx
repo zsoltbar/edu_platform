@@ -15,7 +15,8 @@ export default function Navbar({ username }: NavbarProps) {
       )}
       <div className="space-x-4">
         <Link href="/dashboard">Dashboard</Link>
-        <Link href="/admin/tasks">Admin</Link>
+        <Link href="/admin/tasks">Tasks</Link>
+        <Link href="/admin/users">Users</Link>
       </div>
     </nav>
   );
