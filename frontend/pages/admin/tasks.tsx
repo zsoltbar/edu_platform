@@ -7,6 +7,7 @@ import { useFormState } from '../../hooks/useFormState';
 import { Task, TaskFormData } from '../../types';
 import { TASK_OPTIONS, DEFAULT_VALUES, API_ENDPOINTS } from '../../constants';
 import { getValidationRules } from '../../utils/validation';
+import { useFormShortcuts } from '../../components/ui/useKeyboard';
 
 export default function AdminTasks() {
   const { currentUser, loading, getAuthHeader } = useAuth(true); // Require admin access
@@ -109,6 +110,10 @@ export default function AdminTasks() {
     });
   }, [editTaskForm]);
 
+  const handleDoubleClick = useCallback((task: Task) => {
+    handleEdit(task);
+  }, [handleEdit]);
+
   const cancelEdit = useCallback(() => {
     setEditId(null);
     editTaskForm.reset();
@@ -156,6 +161,12 @@ export default function AdminTasks() {
     });
     setCollapsed(initialCollapsed);
   }, [tasks]);
+
+  // Keyboard shortcuts for form editing
+  useFormShortcuts({
+    save: editId ? editTaskForm.handleSubmit : (showNewTaskForm ? newTaskForm.handleSubmit : undefined),
+    cancel: editId ? cancelEdit : (showNewTaskForm ? cancelNewTaskForm : undefined),
+  }, { enabled: editId !== null || showNewTaskForm });
 
   const toggleCollapse = (subject: string) => {
     setCollapsed(prev => ({ ...prev, [subject]: !prev[subject] }));
@@ -253,6 +264,15 @@ export default function AdminTasks() {
             </div>
           )}
         </div>
+        {/* Help text */}
+        <div className="mb-4 bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+          <p className="text-sm text-blue-700">
+            💡 <strong>Tippek:</strong> Dupla kattints egy feladatra a gyors szerkesztéshez. 
+            Billentyűk: <kbd className="px-1 py-0.5 bg-white border border-gray-300 rounded text-xs">Ctrl+S</kbd> mentés, 
+            <kbd className="px-1 py-0.5 bg-white border border-gray-300 rounded text-xs">Esc</kbd> mégse.
+          </p>
+        </div>
+
         {/* Grouped and collapsible tasks */}
         {Object.entries(groupedTasks).map(([subject, subjectTasks]) => (
           <div key={subject} className="mb-8">
@@ -334,12 +354,19 @@ export default function AdminTasks() {
                       </div>
                     ) : (
                       // View mode
-                      <div className="flex justify-between items-center">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-lg text-purple-800 break-words">{task.title}</div>
-                          <div className="text-gray-600 text-sm mt-1 break-words">{task.description}</div>
-                          <div className="text-xs text-gray-400 mt-2">
+                      <div 
+                        className="group flex justify-between items-center cursor-pointer hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 rounded-lg p-2 -m-2 transition-all duration-200 hover:shadow-sm"
+                        onDoubleClick={() => handleDoubleClick(task)}
+                        title="Dupla kattintás a szerkesztéshez"
+                      >
+                        <div className="flex-1 min-w-0 relative">
+                          <div className="font-semibold text-lg text-purple-800 break-words select-none">{task.title}</div>
+                          <div className="text-gray-600 text-sm mt-1 break-words select-none">{task.description}</div>
+                          <div className="text-xs text-gray-400 mt-2 select-none">
                             {task.subject} • {task.class_grade}. osztály • {task.difficulty}
+                          </div>
+                          <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <span className="text-xs text-blue-500 bg-blue-100 px-1 py-0.5 rounded">✏️ Dupla kattintás</span>
                           </div>
                         </div>
                         <div className="flex gap-2 ml-4 shrink-0">
