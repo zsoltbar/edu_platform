@@ -2,6 +2,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import api from "../../lib/api";
 import Navbar from "../../components/Navbar";
+import { useToast } from "../../components/ui/ToastProvider";
+import { useConfirmationDialog } from "../../components/ui/useConfirmation";
+import { DataTable, Column } from "../../components/ui/DataTable";
+import { useSearchAndFilter } from "../../components/ui/useSearchAndFilter";
+import { useNavigationShortcuts } from "../../components/ui/useKeyboard";
 
 interface User {
   id: number;
@@ -30,6 +35,15 @@ export default function AdminUsers() {
   const [newUserRole, setNewUserRole] = useState("student");
   const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   const router = useRouter();
+  const { showToast } = useToast();
+  const { confirm } = useConfirmationDialog();
+
+  // Navigation shortcuts
+  useNavigationShortcuts({
+    goToDashboard: () => router.push('/dashboard'),
+    goToTasks: () => router.push('/admin/tasks'),
+    refreshData: () => window.location.reload()
+  });
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -46,7 +60,7 @@ export default function AdminUsers() {
         setCurrentUser(res.data);
         // Check if user is admin
         if (res.data.role !== "admin") {
-          alert("Hozzáférés megtagadva! Csak adminisztrátorok férhetnek hozzá.");
+          showToast("Hozzáférés megtagadva! Csak adminisztrátorok férhetnek hozzá.", "error");
           router.replace("/dashboard");
           return;
         }
@@ -66,7 +80,7 @@ export default function AdminUsers() {
       .catch(err => {
         console.error(err);
         setLoading(false);
-        alert("Hiba a felhasználók betöltése során");
+        showToast("Hiba a felhasználók betöltése során", "error");
       });
   }, [router]);
 
@@ -86,7 +100,15 @@ export default function AdminUsers() {
   }, [searchTerm, users]);
 
   const handleDeleteUser = async (userId: number, userName: string) => {
-    if (!confirm(`Biztosan törölni szeretnéd ezt a felhasználót: ${userName}?`)) {
+    const confirmed = await confirm({
+      title: "Felhasználó törlése",
+      message: `Biztosan törölni szeretnéd ezt a felhasználót: ${userName}?`,
+      confirmText: "Törlés",
+      cancelText: "Mégse",
+      variant: "danger"
+    });
+    
+    if (!confirmed) {
       return;
     }
 
@@ -107,10 +129,10 @@ export default function AdminUsers() {
           user.role.toLowerCase().includes(searchTerm.toLowerCase())
       ));
       
-      alert("Felhasználó sikeresen törölve!");
+      showToast("Felhasználó sikeresen törölve!", "success");
     } catch (error) {
       console.error("Error deleting user:", error);
-      alert("Hiba a felhasználó törlése során");
+      showToast("Hiba a felhasználó törlése során", "error");
     }
   };
 
@@ -133,10 +155,10 @@ export default function AdminUsers() {
       );
       setFilteredUsers(updatedFilteredUsers);
       
-      alert(`${userName} szerepköre sikeresen frissítve: ${getRoleDisplayName(newRole)}`);
+      showToast(`${userName} szerepköre sikeresen frissítve: ${getRoleDisplayName(newRole)}`, "success");
     } catch (error) {
       console.error("Error updating user role:", error);
-      alert("Hiba a szerepkör frissítése során");
+      showToast("Hiba a szerepkör frissítése során", "error");
     }
   };
 
@@ -152,7 +174,7 @@ export default function AdminUsers() {
 
   const handleNameUpdate = async (userId: number) => {
     if (!editingUserName.trim()) {
-      alert("A név nem lehet üres!");
+      showToast("A név nem lehet üres!", "warning");
       return;
     }
 
@@ -176,10 +198,10 @@ export default function AdminUsers() {
       
       setEditingUserId(null);
       setEditingUserName("");
-      alert("Felhasználó neve sikeresen frissítve!");
+      showToast("Felhasználó neve sikeresen frissítve!", "success");
     } catch (error) {
       console.error("Error updating user name:", error);
-      alert("Hiba a név frissítése során");
+      showToast("Hiba a név frissítése során", "error");
     }
   };
 
@@ -197,16 +219,24 @@ export default function AdminUsers() {
 
   const handlePasswordUpdate = async (userId: number, userName: string) => {
     if (!newPassword.trim()) {
-      alert("A jelszó nem lehet üres!");
+      showToast("A jelszó nem lehet üres!", "warning");
       return;
     }
 
     if (newPassword.length < 4) {
-      alert("A jelszó legalább 4 karakter hosszú kell legyen!");
+      showToast("A jelszó legalább 4 karakter hosszú kell legyen!", "warning");
       return;
     }
 
-    if (!confirm(`Biztosan megváltoztatod ${userName} jelszavát?`)) {
+    const confirmed = await confirm({
+      title: "Jelszó megváltoztatása",
+      message: `Biztosan megváltoztatod ${userName} jelszavát?`,
+      confirmText: "Megváltoztatás",
+      cancelText: "Mégse",
+      variant: "warning"
+    });
+    
+    if (!confirmed) {
       return;
     }
 
@@ -219,10 +249,10 @@ export default function AdminUsers() {
       setPasswordEditUserId(null);
       setNewPassword("");
       setShowPassword(false);
-      alert(`${userName} jelszava sikeresen frissítve!`);
+      showToast(`${userName} jelszava sikeresen frissítve!`, "success");
     } catch (error) {
       console.error("Error updating password:", error);
-      alert("Hiba a jelszó frissítése során");
+      showToast("Hiba a jelszó frissítése során", "error");
     }
   };
 
@@ -238,13 +268,13 @@ export default function AdminUsers() {
 
   const handleEmailUpdate = async (userId: number, userName: string) => {
     if (!editingUserEmail.trim()) {
-      alert("Az email/bejelentkezési név nem lehet üres!");
+      showToast("Az email/bejelentkezési név nem lehet üres!", "warning");
       return;
     }
 
     // Basic validation - check for spaces and minimum length
     if (editingUserEmail.trim().includes(' ') || editingUserEmail.trim().length < 3) {
-      alert("Az email/bejelentkezési név nem tartalmazhat szóközöket és legalább 3 karakter hosszú kell legyen!");
+      showToast("Az email/bejelentkezési név nem tartalmazhat szóközöket és legalább 3 karakter hosszú kell legyen!", "warning");
       return;
     }
 
@@ -268,10 +298,10 @@ export default function AdminUsers() {
       
       setEditingEmailUserId(null);
       setEditingUserEmail("");
-      alert(`${userName} email/bejelentkezési neve sikeresen frissítve!`);
+      showToast(`${userName} email/bejelentkezési neve sikeresen frissítve!`, "success");
     } catch (error) {
       console.error("Error updating email:", error);
-      alert("Hiba az email/bejelentkezési név frissítése során");
+      showToast("Hiba az email/bejelentkezési név frissítése során", "error");
     }
   };
 
@@ -304,23 +334,23 @@ export default function AdminUsers() {
   const handleCreateNewUser = async () => {
     // Validation
     if (!newUserName.trim()) {
-      alert("A név nem lehet üres!");
+      showToast("A név nem lehet üres!", "warning");
       return;
     }
     if (!newUserEmail.trim()) {
-      alert("Az email/bejelentkezési név nem lehet üres!");
+      showToast("Az email/bejelentkezési név nem lehet üres!", "warning");
       return;
     }
     if (newUserEmail.trim().includes(' ') || newUserEmail.trim().length < 3) {
-      alert("Az email/bejelentkezési név nem tartalmazhat szóközöket és legalább 3 karakter hosszú kell legyen!");
+      showToast("Az email/bejelentkezési név nem tartalmazhat szóközöket és legalább 3 karakter hosszú kell legyen!", "warning");
       return;
     }
     if (!newUserPassword.trim()) {
-      alert("A jelszó nem lehet üres!");
+      showToast("A jelszó nem lehet üres!", "warning");
       return;
     }
     if (newUserPassword.length < 4) {
-      alert("A jelszó legalább 4 karakter hosszú kell legyen!");
+      showToast("A jelszó legalább 4 karakter hosszú kell legyen!", "warning");
       return;
     }
 
@@ -347,10 +377,10 @@ export default function AdminUsers() {
       setShowNewUserForm(false);
       setShowNewUserPassword(false);
       
-      alert("Új felhasználó sikeresen létrehozva!");
+      showToast("Új felhasználó sikeresen létrehozva!", "success");
     } catch (error) {
       console.error("Error creating user:", error);
-      alert("Hiba a felhasználó létrehozása során");
+      showToast("Hiba a felhasználó létrehozása során", "error");
     }
   };
 
