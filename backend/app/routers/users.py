@@ -11,22 +11,22 @@ db = database.SessionLocal()
 
 class UserCreate(BaseModel):
     name: str
-    email: str
+    email: str  # Can be email address or login name
     password: str
 
 class UserLogin(BaseModel):
-    email: str
+    email: str  # Can be email address or login name
     password: str
 
 class UserOut(BaseModel):
     id: int
     name: str
-    email: str
+    email: str  # Can be email address or login name
     role: str
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
-    email: Optional[str] = None
+    email: Optional[str] = None  # Can be email address or login name
     password: Optional[str] = None
     role: Optional[str] = None
 
@@ -40,9 +40,15 @@ def read_users_me(current_user: User = Depends(auth.get_current_user)):
 # Regisztráció
 @router.post("/register")
 def register(user: UserCreate):
+    # Basic validation for email/login
+    if " " in user.email.strip():
+        raise HTTPException(status_code=400, detail="Email/login cannot contain spaces")
+    if len(user.email.strip()) < 3:
+        raise HTTPException(status_code=400, detail="Email/login must be at least 3 characters long")
+    
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="Email/login already registered")
     hashed_password = auth.get_password_hash(user.password)
     new_user = models.User(name=user.name, email=user.email, hashed_password=hashed_password)
     db.add(new_user)
@@ -119,26 +125,28 @@ def update_user(user_id: int, user_update: UserUpdate, current_user: User = Depe
         user_to_update.name = user_update.name.strip()
         updates_made.append(f"name from '{old_name}' to '{user_update.name.strip()}'")
     
-    # Update email if provided
+    # Update email/login if provided
     if user_update.email is not None:
         if not user_update.email.strip():
-            raise HTTPException(status_code=400, detail="Email cannot be empty")
-        if "@" not in user_update.email or "." not in user_update.email:
-            raise HTTPException(status_code=400, detail="Invalid email format")
+            raise HTTPException(status_code=400, detail="Email/login cannot be empty")
+        if " " in user_update.email.strip():
+            raise HTTPException(status_code=400, detail="Email/login cannot contain spaces")
+        if len(user_update.email.strip()) < 3:
+            raise HTTPException(status_code=400, detail="Email/login must be at least 3 characters long")
         if len(user_update.email.strip()) > 255:
-            raise HTTPException(status_code=400, detail="Email too long (max 255 characters)")
+            raise HTTPException(status_code=400, detail="Email/login too long (max 255 characters)")
         
-        # Check if email is already taken by another user
+        # Check if email/login is already taken by another user
         existing_user = db.query(models.User).filter(
             models.User.email == user_update.email.strip(),
             models.User.id != user_id
         ).first()
         if existing_user:
-            raise HTTPException(status_code=400, detail="Email already exists")
+            raise HTTPException(status_code=400, detail="Email/login already exists")
         
         old_email = user_to_update.email
         user_to_update.email = user_update.email.strip()
-        updates_made.append(f"email from '{old_email}' to '{user_update.email.strip()}'")
+        updates_made.append(f"email/login from '{old_email}' to '{user_update.email.strip()}'")
     
     # Update password if provided
     if user_update.password is not None:

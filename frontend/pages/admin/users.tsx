@@ -232,14 +232,13 @@ export default function AdminUsers() {
 
   const handleEmailUpdate = async (userId: number, userName: string) => {
     if (!editingUserEmail.trim()) {
-      alert("Az email nem lehet üres!");
+      alert("Az email/bejelentkezési név nem lehet üres!");
       return;
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(editingUserEmail.trim())) {
-      alert("Kérjük, adjon meg egy érvényes email címet!");
+    // Basic validation - check for spaces and minimum length
+    if (editingUserEmail.trim().includes(' ') || editingUserEmail.trim().length < 3) {
+      alert("Az email/bejelentkezési név nem tartalmazhat szóközöket és legalább 3 karakter hosszú kell legyen!");
       return;
     }
 
@@ -263,10 +262,10 @@ export default function AdminUsers() {
       
       setEditingEmailUserId(null);
       setEditingUserEmail("");
-      alert(`${userName} email címe sikeresen frissítve!`);
+      alert(`${userName} email/bejelentkezési neve sikeresen frissítve!`);
     } catch (error) {
       console.error("Error updating email:", error);
-      alert("Hiba az email cím frissítése során");
+      alert("Hiba az email/bejelentkezési név frissítése során");
     }
   };
 
@@ -314,7 +313,7 @@ export default function AdminUsers() {
         <div className="mb-6 bg-white rounded-lg shadow p-4">
           <input
             type="text"
-            placeholder="Keresés név, email vagy szerepkör alapján..."
+            placeholder="Keresés név, email/bejelentkezési név vagy szerepkör alapján..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -339,7 +338,7 @@ export default function AdminUsers() {
                     Név
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Email
+                    Email/Login
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Szerepkör
@@ -404,7 +403,7 @@ export default function AdminUsers() {
                             value={editingUserEmail}
                             onChange={(e) => setEditingUserEmail(e.target.value)}
                             className="text-sm text-gray-900 border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-                            placeholder="email@example.com"
+                            placeholder="email@example.com vagy felhasználónév"
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 handleEmailUpdate(user.id, user.name);
@@ -471,7 +470,7 @@ export default function AdminUsers() {
                               className="text-green-600 hover:text-green-900 font-medium text-xs"
                               disabled={editingEmailUserId !== null}
                             >
-                              Email
+                              Email/Login
                             </button>
                             <button
                               onClick={() => startEditingPassword(user.id)}
