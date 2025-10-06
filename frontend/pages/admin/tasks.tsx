@@ -21,6 +21,7 @@ export default function AdminTasks() {
   const [difficulty, setDifficulty] = useState('Közepes');
   const [editId, setEditId] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState<{ [subject: string]: boolean }>({});
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const router = useRouter();
 
   const getAuthHeader = () => {
@@ -40,6 +41,14 @@ export default function AdminTasks() {
       router.replace("/");
       return;
     }
+    
+    const authHeader = getAuthHeader();
+    
+    // Fetch current user info
+    api.get("/users/me", authHeader)
+      .then(res => setCurrentUser(res.data))
+      .catch(err => console.error(err));
+    
     fetchTasks();
   }, [router]);
 
@@ -105,7 +114,7 @@ export default function AdminTasks() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-pink-50 to-purple-100">
-      <Navbar />
+      <Navbar username={currentUser?.name} userRole={currentUser?.role} />
       <div className="p-8 max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-purple-700 text-center">Admin Feladatok</h1>
         <div className="mb-8 bg-white rounded-xl shadow-lg p-6 flex flex-wrap gap-4 items-center">

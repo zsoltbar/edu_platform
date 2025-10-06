@@ -47,7 +47,7 @@ def generate_next_question(req: NextQuestionRequest):
         Previous Question: {req.previous_question}
         Student Answer: {req.student_answer}
         Please provide feedback and the next possible question, and give a description addressed to students for the next question both in Hungarian.
-        Provide 0-109 score for the student's answer as well. 
+        Provide 0-100 score for the student's answer as well. 
         Format the entire response as dictionary with the following fields:
             Feedback: ...
             Next Question: ...

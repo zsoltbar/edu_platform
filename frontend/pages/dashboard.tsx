@@ -18,6 +18,7 @@ interface Task {
 export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [username, setUsername] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>("");
   const [collapsed, setCollapsed] = useState<{ [subject: string]: boolean }>({});
   const router = useRouter();
 
@@ -32,7 +33,10 @@ export default function Dashboard() {
       .then(res => setTasks(res.data))
       .catch(err => console.error(err));
     api.get("/users/me", authHeader)
-      .then(res => setUsername(res.data.name))
+      .then(res => {
+        setUsername(res.data.name);
+        setUserRole(res.data.role);
+      })
       .catch(err => console.error(err));
   }, [router]);
 
@@ -58,7 +62,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <Navbar username={username} />
+      <Navbar username={username} userRole={userRole} />
       <div className="p-8 max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-blue-700">Diák Dashboard</h1>
         

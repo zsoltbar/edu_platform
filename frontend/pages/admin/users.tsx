@@ -18,6 +18,11 @@ export default function AdminUsers() {
   const [loading, setLoading] = useState(true);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [editingUserName, setEditingUserName] = useState("");
+  const [passwordEditUserId, setPasswordEditUserId] = useState<number | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [editingEmailUserId, setEditingEmailUserId] = useState<number | null>(null);
+  const [editingUserEmail, setEditingUserEmail] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -172,6 +177,99 @@ export default function AdminUsers() {
     }
   };
 
+  const startEditingPassword = (userId: number) => {
+    setPasswordEditUserId(userId);
+    setNewPassword("");
+    setShowPassword(false);
+  };
+
+  const cancelEditingPassword = () => {
+    setPasswordEditUserId(null);
+    setNewPassword("");
+    setShowPassword(false);
+  };
+
+  const handlePasswordUpdate = async (userId: number, userName: string) => {
+    if (!newPassword.trim()) {
+      alert("A jelszó nem lehet üres!");
+      return;
+    }
+
+    if (newPassword.length < 4) {
+      alert("A jelszó legalább 4 karakter hosszú kell legyen!");
+      return;
+    }
+
+    if (!confirm(`Biztosan megváltoztatod ${userName} jelszavát?`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const authHeader = { headers: { Authorization: `Bearer ${token}` } };
+      
+      await api.put(`/users/${userId}/password`, { password: newPassword }, authHeader);
+      
+      setPasswordEditUserId(null);
+      setNewPassword("");
+      setShowPassword(false);
+      alert(`${userName} jelszava sikeresen frissítve!`);
+    } catch (error) {
+      console.error("Error updating password:", error);
+      alert("Hiba a jelszó frissítése során");
+    }
+  };
+
+  const startEditingEmail = (userId: number, currentEmail: string) => {
+    setEditingEmailUserId(userId);
+    setEditingUserEmail(currentEmail);
+  };
+
+  const cancelEditingEmail = () => {
+    setEditingEmailUserId(null);
+    setEditingUserEmail("");
+  };
+
+  const handleEmailUpdate = async (userId: number, userName: string) => {
+    if (!editingUserEmail.trim()) {
+      alert("Az email nem lehet üres!");
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editingUserEmail.trim())) {
+      alert("Kérjük, adjon meg egy érvényes email címet!");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const authHeader = { headers: { Authorization: `Bearer ${token}` } };
+      
+      await api.put(`/users/${userId}/email`, { email: editingUserEmail.trim() }, authHeader);
+      
+      // Update user email in state
+      const updatedUsers = users.map(user => 
+        user.id === userId ? { ...user, email: editingUserEmail.trim() } : user
+      );
+      setUsers(updatedUsers);
+      
+      // Also update filtered users
+      const updatedFilteredUsers = filteredUsers.map(user => 
+        user.id === userId ? { ...user, email: editingUserEmail.trim() } : user
+      );
+      setFilteredUsers(updatedFilteredUsers);
+      
+      setEditingEmailUserId(null);
+      setEditingUserEmail("");
+      alert(`${userName} email címe sikeresen frissítve!`);
+    } catch (error) {
+      console.error("Error updating email:", error);
+      alert("Hiba az email cím frissítése során");
+    }
+  };
+
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case "admin":
@@ -208,7 +306,7 @@ export default function AdminUsers() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <Navbar username={currentUser?.name} />
+      <Navbar username={currentUser?.name} userRole={currentUser?.role} />
       <div className="p-8 max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-6 text-blue-700">Felhasználók kezelése</h1>
         
@@ -299,7 +397,46 @@ export default function AdminUsers() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{user.email}</div>
+                      {editingEmailUserId === user.id ? (
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="email"
+                            value={editingUserEmail}
+                            onChange={(e) => setEditingUserEmail(e.target.value)}
+                            className="text-sm text-gray-900 border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                            placeholder="email@example.com"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                handleEmailUpdate(user.id, user.name);
+                              } else if (e.key === 'Escape') {
+                                cancelEditingEmail();
+                              }
+                            }}
+                            autoFocus
+                          />
+                          <button
+                            onClick={() => handleEmailUpdate(user.id, user.name)}
+                            className="text-green-600 hover:text-green-800 text-xs"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={cancelEditingEmail}
+                            className="text-red-600 hover:text-red-800 text-xs"
+                          >
+                            ✗
+                          </button>
+                        </div>
+                      ) : (
+                        <div 
+                          className="text-sm text-gray-900 cursor-pointer hover:text-blue-600 flex items-center"
+                          onClick={() => startEditingEmail(user.id, user.email)}
+                          title="Kattints a szerkesztéshez"
+                        >
+                          {user.email}
+                          <span className="ml-1 text-gray-400 text-xs">✎</span>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {currentUser && user.id !== currentUser.id ? (
@@ -320,20 +457,73 @@ export default function AdminUsers() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {currentUser && user.id !== currentUser.id ? (
-                        <div className="flex space-x-3">
-                          <button
-                            onClick={() => startEditingName(user.id, user.name)}
-                            className="text-blue-600 hover:text-blue-900 font-medium"
-                            disabled={editingUserId !== null}
-                          >
-                            Szerkesztés
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(user.id, user.name)}
-                            className="text-red-600 hover:text-red-900 font-medium"
-                          >
-                            Törlés
-                          </button>
+                        <div className="flex flex-col space-y-2">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => startEditingName(user.id, user.name)}
+                              className="text-blue-600 hover:text-blue-900 font-medium text-xs"
+                              disabled={editingUserId !== null}
+                            >
+                              Név
+                            </button>
+                            <button
+                              onClick={() => startEditingEmail(user.id, user.email)}
+                              className="text-green-600 hover:text-green-900 font-medium text-xs"
+                              disabled={editingEmailUserId !== null}
+                            >
+                              Email
+                            </button>
+                            <button
+                              onClick={() => startEditingPassword(user.id)}
+                              className="text-purple-600 hover:text-purple-900 font-medium text-xs"
+                              disabled={passwordEditUserId !== null}
+                            >
+                              Jelszó
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id, user.name)}
+                              className="text-red-600 hover:text-red-900 font-medium text-xs"
+                            >
+                              Törlés
+                            </button>
+                          </div>
+                          {passwordEditUserId === user.id && (
+                            <div className="flex items-center space-x-2 bg-gray-50 p-2 rounded">
+                              <input
+                                type={showPassword ? "text" : "password"}
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Új jelszó (min. 6 karakter)"
+                                className="text-xs border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500 w-32"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handlePasswordUpdate(user.id, user.name);
+                                  } else if (e.key === 'Escape') {
+                                    cancelEditingPassword();
+                                  }
+                                }}
+                                autoFocus
+                              />
+                              <button
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="text-gray-500 hover:text-gray-700 text-xs"
+                              >
+                                {showPassword ? '👁️' : '👁️‍🗨️'}
+                              </button>
+                              <button
+                                onClick={() => handlePasswordUpdate(user.id, user.name)}
+                                className="text-green-600 hover:text-green-800 text-xs"
+                              >
+                                ✓
+                              </button>
+                              <button
+                                onClick={cancelEditingPassword}
+                                className="text-red-600 hover:text-red-800 text-xs"
+                              >
+                                ✗
+                              </button>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-gray-400 italic">Saját fiók</span>

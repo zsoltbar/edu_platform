@@ -12,6 +12,7 @@ export default function TaskDetail() {
   const [tutorReply, setTutorReply] = useState<any>(null);
   const [explanation, setExplanation] = useState<string>("");
   const [username, setUsername] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>("");
   const [scoreSum, setScoreSum] = useState(0);
   const [lastScore, setLastScore] = useState<number | null>(null);
   const [hintVisible, setHintVisible] = useState(false);
@@ -25,7 +26,10 @@ export default function TaskDetail() {
       return;
     }
     api.get("/users/me", { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => setUsername(res.data.name))
+      .then(res => {
+        setUsername(res.data.name);
+        setUserRole(res.data.role);
+      })
       .catch(err => {});
     if (id) {
       const authHeader = { headers: { Authorization: `Bearer ${token}` } };
@@ -116,6 +120,7 @@ export default function TaskDetail() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 relative">
       <Navbar 
         username={username} 
+        userRole={userRole}
         onDashboardClick={() => saveFinalScoreAndNavigate('/dashboard')}
       />
       <div className="absolute top-20 right-8 z-10">

@@ -2,10 +2,11 @@ import Link from 'next/link';
 
 interface NavbarProps {
   username?: string;
+  userRole?: string;
   onDashboardClick?: () => void;
 }
 
-export default function Navbar({ username, onDashboardClick }: NavbarProps) {
+export default function Navbar({ username, userRole, onDashboardClick }: NavbarProps) {
   const handleDashboardClick = (e: React.MouseEvent) => {
     if (onDashboardClick) {
       e.preventDefault();
@@ -18,7 +19,7 @@ export default function Navbar({ username, onDashboardClick }: NavbarProps) {
       <div className="font-bold">OkosTanítás Platform</div>
       {username && (
         <div className="text-lg font-semibold">
-          Üdvözlünk, {username}!
+          Üdvözlünk, {username}! {userRole && <span className="text-sm opacity-80">({userRole})</span>}
         </div>
       )}
       <div className="space-x-4">
