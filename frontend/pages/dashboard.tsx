@@ -3,6 +3,8 @@ import { useRouter } from "next/router";
 import api from "../lib/api";
 import TaskCard from "../components/TaskCard";
 import Navbar from "../components/Navbar";
+import Leaderboard from "../components/Leaderboard";
+import UserScoreCard from "../components/UserScoreCard";
 
 interface Task {
   id: number;
@@ -58,7 +60,14 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       <Navbar username={username} />
       <div className="p-8 max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-4 text-blue-700">Diák Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-6 text-blue-700">Diák Dashboard</h1>
+        
+        {/* Score Dashboard Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <UserScoreCard />
+          <Leaderboard limit={5} />
+        </div>
+        
         {/* Display tasks grouped by subject, collapsible */}
         {Object.entries(groupedTasks).map(([subject, subjectTasks]) => (
           <div key={subject} className="mb-8">
