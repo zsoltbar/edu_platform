@@ -23,6 +23,12 @@ export default function AdminUsers() {
   const [showPassword, setShowPassword] = useState(false);
   const [editingEmailUserId, setEditingEmailUserId] = useState<number | null>(null);
   const [editingUserEmail, setEditingUserEmail] = useState("");
+  const [showNewUserForm, setShowNewUserForm] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState("student");
+  const [showNewUserPassword, setShowNewUserPassword] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -295,6 +301,68 @@ export default function AdminUsers() {
     }
   };
 
+  const handleCreateNewUser = async () => {
+    // Validation
+    if (!newUserName.trim()) {
+      alert("A név nem lehet üres!");
+      return;
+    }
+    if (!newUserEmail.trim()) {
+      alert("Az email/bejelentkezési név nem lehet üres!");
+      return;
+    }
+    if (newUserEmail.trim().includes(' ') || newUserEmail.trim().length < 3) {
+      alert("Az email/bejelentkezési név nem tartalmazhat szóközöket és legalább 3 karakter hosszú kell legyen!");
+      return;
+    }
+    if (!newUserPassword.trim()) {
+      alert("A jelszó nem lehet üres!");
+      return;
+    }
+    if (newUserPassword.length < 4) {
+      alert("A jelszó legalább 4 karakter hosszú kell legyen!");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const authHeader = { headers: { Authorization: `Bearer ${token}` } };
+      
+      await api.post("/users/register", {
+        name: newUserName.trim(),
+        email: newUserEmail.trim(),
+        password: newUserPassword
+      }, authHeader);
+      
+      // Refresh the users list
+      const usersResponse = await api.get("/users", authHeader);
+      setUsers(usersResponse.data);
+      setFilteredUsers(usersResponse.data);
+      
+      // Reset form
+      setNewUserName("");
+      setNewUserEmail("");
+      setNewUserPassword("");
+      setNewUserRole("student");
+      setShowNewUserForm(false);
+      setShowNewUserPassword(false);
+      
+      alert("Új felhasználó sikeresen létrehozva!");
+    } catch (error) {
+      console.error("Error creating user:", error);
+      alert("Hiba a felhasználó létrehozása során");
+    }
+  };
+
+  const cancelNewUserForm = () => {
+    setNewUserName("");
+    setNewUserEmail("");
+    setNewUserPassword("");
+    setNewUserRole("student");
+    setShowNewUserForm(false);
+    setShowNewUserPassword(false);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
@@ -318,6 +386,98 @@ export default function AdminUsers() {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
+        </div>
+
+        {/* New User Section */}
+        <div className="mb-6">
+          {!showNewUserForm ? (
+            <button
+              onClick={() => setShowNewUserForm(true)}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200 flex items-center"
+            >
+              <span className="mr-2">+</span>
+              Új felhasználó létrehozása
+            </button>
+          ) : (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-bold mb-4 text-green-700">Új felhasználó létrehozása</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Név *
+                  </label>
+                  <input
+                    type="text"
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="Teljes név"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email/Bejelentkezési név *
+                  </label>
+                  <input
+                    type="text"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="email@example.com vagy felhasználónév"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Jelszó *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewUserPassword ? "text" : "password"}
+                      value={newUserPassword}
+                      onChange={(e) => setNewUserPassword(e.target.value)}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent pr-10"
+                      placeholder="Legalább 4 karakter"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                      className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+                    >
+                      {showNewUserPassword ? '👁️' : '👁️‍🗨️'}
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Szerepkör
+                  </label>
+                  <select
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="student">Diák</option>
+                    <option value="teacher">Tanár</option>
+                    <option value="admin">Adminisztrátor</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  onClick={cancelNewUserForm}
+                  className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium transition duration-200"
+                >
+                  Mégse
+                </button>
+                <button
+                  onClick={handleCreateNewUser}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200"
+                >
+                  Létrehozás
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Users count */}
