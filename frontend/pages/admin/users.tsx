@@ -113,7 +113,7 @@ export default function AdminUsers() {
       const token = localStorage.getItem("token");
       const authHeader = { headers: { Authorization: `Bearer ${token}` } };
       
-      await api.put(`/users/${userId}/role`, { role: newRole }, authHeader);
+      await api.put(`/users/${userId}`, { role: newRole }, authHeader);
       
       // Update user role in state
       const updatedUsers = users.map(user => 
@@ -154,7 +154,7 @@ export default function AdminUsers() {
       const token = localStorage.getItem("token");
       const authHeader = { headers: { Authorization: `Bearer ${token}` } };
       
-      await api.put(`/users/${userId}/name`, { name: editingUserName.trim() }, authHeader);
+      await api.put(`/users/${userId}`, { name: editingUserName.trim() }, authHeader);
       
       // Update user name in state
       const updatedUsers = users.map(user => 
@@ -208,7 +208,7 @@ export default function AdminUsers() {
       const token = localStorage.getItem("token");
       const authHeader = { headers: { Authorization: `Bearer ${token}` } };
       
-      await api.put(`/users/${userId}/password`, { password: newPassword }, authHeader);
+      await api.put(`/users/${userId}`, { password: newPassword }, authHeader);
       
       setPasswordEditUserId(null);
       setNewPassword("");
@@ -247,7 +247,7 @@ export default function AdminUsers() {
       const token = localStorage.getItem("token");
       const authHeader = { headers: { Authorization: `Bearer ${token}` } };
       
-      await api.put(`/users/${userId}/email`, { email: editingUserEmail.trim() }, authHeader);
+      await api.put(`/users/${userId}`, { email: editingUserEmail.trim() }, authHeader);
       
       // Update user email in state
       const updatedUsers = users.map(user => 
