@@ -4,14 +4,25 @@ import { SelectOption, UserRole, Subject, Grade, Difficulty } from '../types';
 
 export const TASK_OPTIONS = {
   subjects: [
-    { value: 'Magyar', label: 'Magyar' },
+    { value: 'Angol nyelv', label: 'Angol nyelv' },
+    { value: 'Biológia', label: 'Biológia' },
+    { value: 'Fizika', label: 'Fizika' },
+    { value: 'Földrajz', label: 'Földrajz' },
+    { value: 'Francia nyelv', label: 'Francia nyelv' },
+    { value: 'Informatika', label: 'Informatika' },
+    { value: 'Kémia', label: 'Kémia' },
+    { value: 'Magyar irodalom', label: 'Magyar irodalom' },
+    { value: 'Magyar nyelvtan', label: 'Magyar nyelvtan' },
     { value: 'Matematika', label: 'Matematika' },
-    { value: 'Történelem', label: 'Történelem' }
+    { value: 'Német nyelv', label: 'Német nyelv' },
+    { value: 'Történelem', label: 'Történelem' },
+    { value: 'Egyéb', label: '--Egyéb--' }
   ] as SelectOption[],
   
   grades: [
-    { value: 4, label: '4. osztály' },
+    { value: 5, label: '5. osztály' },
     { value: 6, label: '6. osztály' },
+    { value: 7, label: '7. osztály' },
     { value: 8, label: '8. osztály' }
   ] as SelectOption[],
   

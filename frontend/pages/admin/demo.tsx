@@ -59,8 +59,8 @@ export default function AdvancedUIDemo() {
       type: 'select',
       selectOptions: [
         { value: 'admin', label: 'Admin' },
-        { value: 'teacher', label: 'Teacher' },
-        { value: 'student', label: 'Student' }
+        { value: 'teacher', label: 'Tanár' },
+        { value: 'student', label: 'Diák' }
       ]
     },
     {

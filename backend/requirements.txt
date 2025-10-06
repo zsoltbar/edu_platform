@@ -10,3 +10,12 @@ openai                   # AI tutor integrációhoz
 slowapi                  # rate-limit decorator a AI tutorhoz
 redis                    # napi kvóta tárolása Redisben
 python-multipart         # form-data kezelés (pl. OAuth2PasswordRequestForm)
+
+# RAG Pipeline Dependencies
+chromadb                 # vector database for embeddings
+sentence-transformers    # embedding models
+numpy                    # numerical computations
+tiktoken                 # token counting for OpenAI
+pypdf2                   # PDF document processing
+python-docx              # Word document processing
+markdown                 # Markdown processing
