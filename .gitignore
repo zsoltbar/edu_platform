@@ -1,7 +1,8 @@
-backend/.env
 .DS_Store
+
+backend/.env
+**/__pycache__/
+
 frontend/.next/
-backend/app/__pycache__/
-backend/app/routers/__pycache__/
 frontend/node_modules/
 frontend/package-lock.json

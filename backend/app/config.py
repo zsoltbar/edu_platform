@@ -17,6 +17,14 @@ class Settings(BaseSettings):
 
     # 🧠 AI / OpenAI modul
     OPENAI_API_KEY: str | None = Field(default=None, env="OPENAI_API_KEY")
+    
+    # 📚 RAG Pipeline Settings
+    VECTOR_STORE_PATH: str = Field(default="./chroma_db", env="VECTOR_STORE_PATH")
+    COLLECTION_NAME: str = Field(default="school_knowledge", env="COLLECTION_NAME")
+    OPENAI_MODEL: str = Field(default="gpt-3.5-turbo", env="OPENAI_MODEL")
+    EMBEDDING_MODEL: str = Field(default="all-MiniLM-L6-v2", env="EMBEDDING_MODEL")
+    CHUNK_SIZE: int = Field(default=500, env="CHUNK_SIZE")
+    CHUNK_OVERLAP: int = Field(default=50, env="CHUNK_OVERLAP")
 
     class Config:
         env_file = ".env"
