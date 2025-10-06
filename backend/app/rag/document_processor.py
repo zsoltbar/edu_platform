@@ -48,7 +48,8 @@ class DocumentChunk:
     
     def _generate_id(self) -> str:
         """Generate unique ID for the chunk."""
-        content_hash = hashlib.md5(self.content.encode()).hexdigest()
+        content = self.content or "empty"
+        content_hash = hashlib.md5(content.encode()).hexdigest()
         return f"chunk_{content_hash[:12]}"
 
 class DocumentProcessor:
@@ -122,8 +123,18 @@ class DocumentProcessor:
         Returns:
             List of document chunks
         """
+        # Check if text is empty or too short
+        if not text or len(text.strip()) < 10:
+            logger.warning("Text is empty or too short to process")
+            return []
+        
         # Clean and normalize text
         cleaned_text = self._clean_text(text)
+        
+        # Check if cleaned text is still valid
+        if not cleaned_text or len(cleaned_text.strip()) < 5:
+            logger.warning("Cleaned text is empty or too short")
+            return []
         
         # Split into chunks
         chunks = self._split_text(cleaned_text)
@@ -187,11 +198,18 @@ class DocumentProcessor:
         if not HAS_DOCX:
             raise ImportError("python-docx not available for DOCX processing")
         
-        doc = docx.Document(file_path)
-        text = ""
-        for paragraph in doc.paragraphs:
-            text += paragraph.text + "\n"
-        return text
+        try:
+            doc = docx.Document(file_path)
+            text = ""
+            for paragraph in doc.paragraphs:
+                if paragraph.text:  # Skip empty paragraphs
+                    text += paragraph.text + "\n"
+            
+            # Return empty string if no text found
+            return text.strip() if text else ""
+        except Exception as e:
+            logger.error(f"Error extracting DOCX text from {file_path}: {e}")
+            return ""
     
     def _extract_markdown_text(self, file_path: Path) -> str:
         """Extract text from Markdown file."""
@@ -220,11 +238,11 @@ class DocumentProcessor:
         text = re.sub(r'\s+', ' ', text)
         
         # Remove special characters but keep basic punctuation
-        text = re.sub(r'[^\w\s\.,!?;:()"-]', '', text)
+        text = re.sub(r'[^-\w\s.,!?;:()"\']', '', text)
         
         # Normalize quotes
-        text = re.sub(r'[""]', '"', text)
-        text = re.sub(r'['']', "'", text)
+        text = re.sub(r'["""]', '"', text)
+        text = re.sub(r"['']", "'", text)
         
         return text.strip()
     
@@ -253,9 +271,13 @@ class DocumentProcessor:
             best_break = -1
             
             for i in range(len(chunk_text) - 1, max(0, len(chunk_text) - 200), -1):
-                if chunk_text[i] in sentence_endings and chunk_text[i + 1].isspace():
-                    best_break = i + 1
-                    break
+                if i < len(chunk_text) and chunk_text[i] in sentence_endings:
+                    if i + 1 < len(chunk_text) and chunk_text[i + 1].isspace():
+                        best_break = i + 1
+                        break
+                    elif i + 1 >= len(chunk_text):  # End of text
+                        best_break = i + 1
+                        break
             
             if best_break > 0:
                 # Break at sentence ending

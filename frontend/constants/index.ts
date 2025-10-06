@@ -6,7 +6,6 @@ export const TASK_OPTIONS = {
   subjects: [
     { value: 'Angol nyelv', label: 'Angol nyelv' },
     { value: 'Biológia', label: 'Biológia' },
-    { value: 'Egyéb', label: 'Egyéb' },
     { value: 'Fizika', label: 'Fizika' },
     { value: 'Földrajz', label: 'Földrajz' },
     { value: 'Francia nyelv', label: 'Francia nyelv' },
@@ -16,7 +15,8 @@ export const TASK_OPTIONS = {
     { value: 'Magyar nyelvtan', label: 'Magyar nyelvtan' },
     { value: 'Matematika', label: 'Matematika' },
     { value: 'Német nyelv', label: 'Német nyelv' },
-    { value: 'Történelem', label: 'Történelem' }
+    { value: 'Történelem', label: 'Történelem' },
+    { value: 'Egyéb', label: '--Egyéb--' }
   ] as SelectOption[],
   
   grades: [

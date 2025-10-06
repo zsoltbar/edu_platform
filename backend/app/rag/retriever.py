@@ -107,14 +107,20 @@ class KnowledgeRetriever:
         # Convert to RetrievedDocument objects
         retrieved_docs = []
         
+        logger.info(f"Vector store search returned: {len(results.get('documents', [[]]))} document batches")
+        
         if results["documents"] and results["documents"][0]:
             documents = results["documents"][0]
             metadatas = results["metadatas"][0] if results["metadatas"] else [{}] * len(documents)
             distances = results["distances"][0] if results["distances"] else [0.0] * len(documents)
             
+            logger.info(f"Found {len(documents)} documents with distances: {distances[:3] if distances else []}")
+            
             for doc, metadata, distance in zip(documents, metadatas, distances):
                 # Convert distance to similarity score (assuming cosine distance)
                 score = 1.0 - distance if distance <= 1.0 else 0.0
+                
+                logger.debug(f"Document score: {score:.3f}, threshold: {self.score_threshold}")
                 
                 if score >= self.score_threshold:
                     retrieved_doc = RetrievedDocument(
@@ -123,6 +129,10 @@ class KnowledgeRetriever:
                         score=score
                     )
                     retrieved_docs.append(retrieved_doc)
+                else:
+                    logger.debug(f"Document filtered out: score {score:.3f} < threshold {self.score_threshold}")
+        else:
+            logger.warning("No documents found in vector store search results")
         
         # Sort by score descending
         retrieved_docs.sort(key=lambda x: x.score, reverse=True)
