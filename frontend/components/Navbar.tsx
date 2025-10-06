@@ -54,6 +54,7 @@ export default function Navbar({ username, userRole, onDashboardClick }: NavbarP
       <div className="space-x-4">
         <Link href="/dashboard" onClick={handleDashboardClick} className="hover:text-gray-300">Dashboard</Link>
         <Link href="/ai-chat" className="hover:text-blue-300">AI Chat</Link>
+        <Link href="/search" className="hover:text-purple-300">Search</Link>
         {userRole === 'admin' && (
           <>
             <Link href="/admin/tasks" className="hover:text-gray-300">Tasks</Link>

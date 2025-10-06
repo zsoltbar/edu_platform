@@ -8,12 +8,16 @@ Provides unified interface for different embedding models.
 
 import asyncio
 import logging
+import os
 from typing import List, Optional, Union
 import numpy as np
 from sentence_transformers import SentenceTransformer
 import openai
 from openai import OpenAI
 import tiktoken
+
+# Disable tokenizers parallelism to avoid forking issues
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 logger = logging.getLogger(__name__)
 

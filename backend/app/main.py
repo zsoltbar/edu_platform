@@ -1,6 +1,10 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import users, tasks, ai_tutor, scores, rag
+
+# Disable tokenizers parallelism to avoid forking issues with sentence-transformers
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 app = FastAPI(
     title="OkosTanítás Platform Backend",

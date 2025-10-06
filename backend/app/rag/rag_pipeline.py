@@ -362,21 +362,42 @@ Válaszolj a kérdésre a fenti kontextus alapján. Ha a kontextus nem tartalmaz
             grades = set()
             sources = set()
             
+            # Debug: log sample metadata to understand structure
             if sample_docs["metadatas"]:
+                logger.info(f"Sample metadata keys from first 3 documents:")
+                for i, metadata in enumerate(sample_docs["metadatas"][:3]):
+                    logger.info(f"  Doc {i}: {list(metadata.keys()) if metadata else 'None'}")
+                    if metadata:
+                        logger.info(f"    Content: {metadata}")
+                
                 for metadata in sample_docs["metadatas"]:
-                    if metadata.get("subject"):
-                        subjects.add(metadata["subject"])
-                    if metadata.get("class_grade"):
-                        grades.add(metadata["class_grade"])
-                    if metadata.get("source"):
-                        sources.add(metadata["source"])
+                    if metadata:  # Check if metadata exists
+                        # Try different possible field names
+                        subject = metadata.get("subject") or metadata.get("Subject")
+                        grade = metadata.get("class_grade") or metadata.get("grade") or metadata.get("Grade")
+                        source = metadata.get("source") or metadata.get("Source") or metadata.get("filename")
+                        
+                        # Debug log each document's metadata values
+                        logger.info(f"Processing metadata: subject='{subject}', grade='{grade}', source='{source}'")
+                        
+                        if subject:
+                            subjects.add(subject)
+                            logger.info(f"Added subject: {subject} (total unique subjects: {len(subjects)})")
+                        if grade:
+                            grade_value = int(grade) if str(grade).isdigit() else grade
+                            grades.add(grade_value)
+                            logger.info(f"Added grade: {grade_value} (total unique grades: {len(grades)})")
+                        if source:
+                            sources.add(source)
+            
+            logger.info(f"Stats extraction result: subjects={len(subjects)}, grades={len(grades)}, sources={len(sources)}")
             
             return {
                 "total_documents": total_docs,
                 "subjects": sorted(list(subjects)),
                 "grades": sorted(list(grades)),
                 "sources_count": len(sources),
-                "embedding_dimension": self.embedding_service.get_embedding_dimension()
+                "embedding_dimension": self.embedding_service.get_embedding_dimension() if total_docs > 0 else 0
             }
         except Exception as e:
             logger.error(f"Error getting knowledge base stats: {e}")

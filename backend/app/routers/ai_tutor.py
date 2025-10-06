@@ -1,14 +1,13 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 import openai
-import os
-from dotenv import load_dotenv
 from app.routers.tasks import get_task, create_task, TaskCreate, get_tasks
+from app.config import get_settings
 import difflib
 import json
 
-load_dotenv()
-openai.api_key = os.getenv("OPENAI_API_KEY")
+settings = get_settings()
+openai.api_key = settings.OPENAI_API_KEY
 
 router = APIRouter()
 
@@ -20,7 +19,7 @@ class TutorRequest(BaseModel):
 def ai_tutor(req: TutorRequest):
     task = get_task(req.id)  # Lookup the task by id
     response = openai.chat.completions.create(
-        model="gpt-4o",
+        model=settings.OPENAI_MODEL,
         messages=[
             {"role": "system", "content": f"You are a {task.subject} tutor for 10-14 year old students. Answer always in Hungarian if the question is in Hungarian, otherwise answer in English."},
             {"role": "user", "content": f"Question: {task.title}\nStudent Answer: {req.student_answer}"}
@@ -55,7 +54,7 @@ def generate_next_question(req: NextQuestionRequest):
             Score: ...
         """
     response = openai.chat.completions.create(
-        model="gpt-4o",
+        model=settings.OPENAI_MODEL,
         messages=[
             {"role": "system", "content": role},
             {"role": "user", "content": prompt}
@@ -134,7 +133,7 @@ class GenerateTaskRequest(BaseModel):
 @router.post("/generate-task")
 def generate_task(req: GenerateTaskRequest):
     response = openai.chat.completions.create(
-        model="gpt-4o",
+        model=settings.OPENAI_MODEL,
         messages=[
             {"role": "system", "content": f"You are a math and logic tutor for 10-14 year old students. Generate a new task for the topic '{req.topic}' at '{req.difficulty}' difficulty. Provide both the question and the correct answer in {req.language}."},
             {"role": "user", "content": f"Please generate a new task for topic '{req.topic}' at '{req.difficulty}' difficulty. Respond in {req.language}. Format: Question: ... Answer: ..."}

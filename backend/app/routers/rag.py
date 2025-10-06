@@ -13,7 +13,6 @@ from pydantic import BaseModel, Field
 import os
 from pathlib import Path
 
-from ..database import get_db
 from ..auth import get_current_user
 from ..models import User
 from ..rag.rag_pipeline import RAGPipeline
@@ -184,6 +183,9 @@ async def upload_document(
             metadata["class_grade"] = grade
         if description:
             metadata["description"] = description
+            
+        # Debug log the metadata being stored
+        logger.info(f"Storing document with metadata: {metadata}")
         
         # Process document
         chunks_processed = await rag_pipeline.ingest_document(
@@ -210,6 +212,25 @@ async def upload_document(
         
         logger.error(f"Document upload error: {e}")
         raise HTTPException(status_code=500, detail=f"Document upload failed: {str(e)}")
+
+@router.get("/debug-metadata")
+async def debug_metadata(
+    current_user: User = Depends(get_current_user),
+    rag_pipeline: RAGPipeline = Depends(get_rag_pipeline)
+):
+    """Debug endpoint to inspect actual metadata in the database."""
+    try:
+        # Get raw data from collection
+        collection = rag_pipeline.vector_store.collection
+        result = collection.get(limit=10, include=['metadatas'])
+        
+        return {
+            "total_count": collection.count(),
+            "sample_metadatas": result.get('metadatas', [])[:5]
+        }
+    except Exception as e:
+        logger.error(f"Debug metadata error: {e}")
+        raise HTTPException(status_code=500, detail=f"Debug failed: {str(e)}")
 
 @router.get("/stats", response_model=KnowledgeBaseStats)
 async def get_knowledge_base_stats(

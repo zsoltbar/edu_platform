@@ -151,18 +151,25 @@ class VectorStore:
         Get documents by metadata filter.
         
         Args:
-            where: Metadata filter conditions
+            where: Metadata filter conditions (empty dict means get all)
             limit: Maximum number of results
             
         Returns:
             Filtered documents
         """
         try:
-            results = self.collection.get(
-                where=where,
-                limit=limit,
-                include=["documents", "metadatas"]
-            )
+            # Handle empty where clause - ChromaDB requires either a proper where clause or None
+            if not where:
+                results = self.collection.get(
+                    limit=limit,
+                    include=["documents", "metadatas"]
+                )
+            else:
+                results = self.collection.get(
+                    where=where,
+                    limit=limit,
+                    include=["documents", "metadatas"]
+                )
             return results
         except Exception as e:
             logger.error(f"Error getting documents by metadata: {e}")

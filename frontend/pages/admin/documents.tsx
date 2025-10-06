@@ -13,9 +13,24 @@ const DocumentUploadPage: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
+  const [stats, setStats] = useState<{
+    total_documents: number;
+    subjects: string[];
+    grades: number[];
+    sources_count: number;
+    embedding_dimension: number;
+  } | null>(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
   
   const { currentUser, loading, getAuthHeader } = useAuth();
   const router = useRouter();
+
+  // Load stats when component mounts
+  useEffect(() => {
+    if (!loading && currentUser) {
+      loadStats();
+    }
+  }, [loading, currentUser]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -61,12 +76,45 @@ const DocumentUploadPage: React.FC = () => {
         (document.getElementById('file-input') as HTMLInputElement).value = '';
       }
       
+      // Reload stats after successful upload
+      loadStats();
+      
     } catch (error) {
       console.error('Upload error:', error);
       setMessage(`Hiba történt a feltöltés során: ${error instanceof Error ? error.message : 'Ismeretlen hiba'}`);
       setMessageType('error');
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const loadStats = async () => {
+    try {
+      setIsLoadingStats(true);
+      const authHeader = getAuthHeader();
+      const response = await api.get('/rag/stats', authHeader);
+      console.log('Stats response:', response.data); // Debug log
+      setStats(response.data);
+    } catch (error) {
+      console.error('Stats loading error:', error);
+      // Don't show error message for stats, just log it
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
+
+  const resetVectorDB = async () => {
+    try {
+      const authHeader = getAuthHeader();
+      await api.delete('/rag/reset', authHeader);
+      setMessage('Tudásbázis sikeresen törölve!');
+      setMessageType('success');
+      // Reload stats after reset
+      loadStats();
+    } catch (error) {
+      console.error('Reset error:', error);
+      setMessage(`Hiba történt a tudásbázis törlésekor: ${error instanceof Error ? error.message : 'Ismeretlen hiba'}`);
+      setMessageType('error');
     }
   };
 
@@ -202,7 +250,120 @@ const DocumentUploadPage: React.FC = () => {
 
           {/* Knowledge Base Stats */}
           <div className="mt-8 pt-6 border-t border-gray-200">
-            <h3 className="text-lg font-medium mb-3">Tudásbázis Statisztika</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium">Tudásbázis Statisztika</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={loadStats}
+                  disabled={isLoadingStats}
+                  className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:opacity-50"
+                >
+                  {isLoadingStats ? '...' : 'Frissítés'}
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      const authHeader = getAuthHeader();
+                      const response = await api.get('/rag/debug-metadata', authHeader);
+                      console.log('Debug metadata:', response.data);
+                      alert('Debug adatok a konzolban (F12)');
+                    } catch (error) {
+                      console.error('Debug error:', error);
+                      alert('Debug hiba - lásd konzol');
+                    }
+                  }}
+                  className="px-3 py-1 bg-yellow-500 text-white text-sm rounded hover:bg-yellow-600"
+                >
+                  Debug
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm('Biztosan törli a teljes tudásbázist? Ez a művelet nem visszavonható!')) {
+                      resetVectorDB();
+                    }
+                  }}
+                  className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                >
+                  Tudásbázis Törlése
+                </button>
+              </div>
+            </div>
+
+            {isLoadingStats ? (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+                <p className="text-sm text-gray-500 mt-2">Statisztikák betöltése...</p>
+              </div>
+            ) : stats ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded">
+                  <h4 className="font-semibold text-gray-700 mb-2">Általános adatok</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span>Összes dokumentum:</span>
+                      <span className="font-medium">{stats.total_documents}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Források száma:</span>
+                      <span className="font-medium">{stats.sources_count}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Embedding dimenzió:</span>
+                      <span className="font-medium">{stats.embedding_dimension}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded">
+                  <h4 className="font-semibold text-gray-700 mb-2">Tartalom</h4>
+                  <div className="text-sm">
+                    <div className="mb-2">
+                      <span className="text-gray-600">Tantárgyak ({stats.subjects?.length || 0}):</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {stats.subjects && stats.subjects.length > 0 ? stats.subjects.map((subject, idx) => (
+                          <span key={idx} className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                            {subject}
+                          </span>
+                        )) : (
+                          <span className="text-gray-400 text-xs">
+                            Nincsenek tantárgyak 
+                            {stats.total_documents > 0 && ' (dokumentumok metaadatai hiányoznak)'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-gray-600">Évfolyamok ({stats.grades?.length || 0}):</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {stats.grades && stats.grades.length > 0 ? stats.grades.map((grade, idx) => (
+                          <span key={idx} className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
+                            {grade}. osztály
+                          </span>
+                        )) : (
+                          <span className="text-gray-400 text-xs">
+                            Nincsenek évfolyamok
+                            {stats.total_documents > 0 && ' (dokumentumok metaadatai hiányoznak)'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {/* Debug info - remove after testing */}
+                    {process.env.NODE_ENV === 'development' && (
+                      <div className="mt-2 p-2 bg-yellow-50 text-xs">
+                        <strong>Debug:</strong> subjects={JSON.stringify(stats.subjects)}, grades={JSON.stringify(stats.grades)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-4 text-gray-500">
+                <p>Nem sikerült betölteni a statisztikákat.</p>
+                <button onClick={loadStats} className="text-blue-500 hover:underline text-sm mt-1">
+                  Újrapróbálkozás
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
