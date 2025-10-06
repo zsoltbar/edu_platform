@@ -1,176 +1,152 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import api from '../../lib/api';
 import Navbar from '../../components/Navbar';
-
-interface Task {
-  id: number;
-  title: string;
-  description: string;
-  subject: string;
-  class_grade: number;
-  difficulty: string;
-}
+import { FormField, SelectField } from '../../components/forms';
+import { useAuth } from '../../hooks/useAuth';
+import { useFormState } from '../../hooks/useFormState';
+import { Task, TaskFormData } from '../../types';
+import { TASK_OPTIONS, DEFAULT_VALUES, API_ENDPOINTS } from '../../constants';
+import { getValidationRules } from '../../utils/validation';
 
 export default function AdminTasks() {
+  const { currentUser, loading, getAuthHeader } = useAuth(true); // Require admin access
   const [tasks, setTasks] = useState<Task[]>([]);
-  // New task form states
   const [showNewTaskForm, setShowNewTaskForm] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [newSubject, setNewSubject] = useState('Magyar');
-  const [newClassGrade, setNewClassGrade] = useState(8);
-  const [newDifficulty, setNewDifficulty] = useState('Közepes');
-  // Edit task form states
   const [editId, setEditId] = useState<number | null>(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editSubject, setEditSubject] = useState('Magyar');
-  const [editClassGrade, setEditClassGrade] = useState(8);
-  const [editDifficulty, setEditDifficulty] = useState('Közepes');
   const [collapsed, setCollapsed] = useState<{ [subject: string]: boolean }>({});
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const router = useRouter();
 
-  const getAuthHeader = () => {
-    const token = localStorage.getItem("token");
-    return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-  };
+  // Form validation rules
+  const validationRules = useMemo(() => ({
+    title: getValidationRules().title,
+    description: getValidationRules().description,
+    subject: { required: false },
+    class_grade: { required: false },
+    difficulty: { required: false }
+  }), []);
 
-  const fetchTasks = () => {
-    api.get('/tasks', getAuthHeader())
-      .then(res => setTasks(res.data))
-      .catch(err => console.error(err));
-  };
+  // New task form
+  const newTaskForm = useFormState<TaskFormData>({
+    initialValues: DEFAULT_VALUES.task,
+    validationRules,
+    onSubmit: handleCreateNewTask
+  });
+
+  // Edit task form
+  const editTaskForm = useFormState<TaskFormData>({
+    initialValues: DEFAULT_VALUES.task,
+    validationRules,
+    onSubmit: handleSaveEdit
+  });
+
+  const fetchTasks = useCallback(async () => {
+    try {
+      const response = await api.get(API_ENDPOINTS.tasks.list, getAuthHeader());
+      setTasks(response.data);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      alert('Hiba a feladatok betöltése során');
+    }
+  }, [getAuthHeader]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      router.replace("/");
-      return;
+    if (!loading && currentUser) {
+      fetchTasks();
     }
-    
-    const authHeader = getAuthHeader();
-    
-    // Fetch current user info
-    api.get("/users/me", authHeader)
-      .then(res => setCurrentUser(res.data))
-      .catch(err => console.error(err));
-    
-    fetchTasks();
-  }, [router]);
+  }, [loading, currentUser, fetchTasks]);
 
-  const handleCreateNewTask = () => {
-    // Validation
-    if (!newTitle.trim()) {
-      alert("A cím nem lehet üres!");
-      return;
+  async function handleCreateNewTask(values: TaskFormData) {
+    try {
+      await api.post(
+        API_ENDPOINTS.tasks.create,
+        {
+          title: values.title.trim(),
+          description: values.description.trim(),
+          subject: values.subject,
+          class_grade: values.class_grade,
+          difficulty: values.difficulty
+        },
+        getAuthHeader()
+      );
+      
+      await fetchTasks();
+      newTaskForm.reset();
+      setShowNewTaskForm(false);
+      alert('Feladat sikeresen létrehozva!');
+    } catch (error) {
+      console.error('Error creating task:', error);
+      alert('Hiba a feladat létrehozása során');
     }
-    if (!newDescription.trim()) {
-      alert("A leírás nem lehet üres!");
-      return;
-    }
+  }
 
-    api.post(
-      '/tasks',
-      { 
-        title: newTitle.trim(), 
-        description: newDescription.trim(), 
-        subject: newSubject, 
-        class_grade: newClassGrade, 
-        difficulty: newDifficulty 
-      },
-      getAuthHeader()
-    )
-      .then(() => { 
-        fetchTasks(); 
-        // Reset form
-        setNewTitle('');
-        setNewDescription('');
-        setNewSubject('Magyar');
-        setNewClassGrade(8);
-        setNewDifficulty('Közepes');
-        setShowNewTaskForm(false);
-        alert("Feladat sikeresen létrehozva!");
-      })
-      .catch(err => {
-        console.error(err);
-        alert("Hiba a feladat létrehozása során");
-      });
-  };
-
-  const cancelNewTaskForm = () => {
-    setNewTitle('');
-    setNewDescription('');
-    setNewSubject('Magyar');
-    setNewClassGrade(8);
-    setNewDifficulty('Közepes');
+  const cancelNewTaskForm = useCallback(() => {
+    newTaskForm.reset();
     setShowNewTaskForm(false);
-  };
+  }, [newTaskForm]);
 
-  const handleDelete = (id: number) => {
-    api.delete(`/tasks/${id}`, getAuthHeader())
-      .then(() => fetchTasks())
-      .catch(err => console.error(err));
-  };
+  const handleDelete = useCallback(async (id: number) => {
+    if (!confirm('Biztosan törölni szeretnéd ezt a feladatot?')) {
+      return;
+    }
+    
+    try {
+      await api.delete(API_ENDPOINTS.tasks.delete(id), getAuthHeader());
+      await fetchTasks();
+      alert('Feladat sikeresen törölve!');
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Hiba a feladat törlése során');
+    }
+  }, [getAuthHeader, fetchTasks]);
 
-  const handleEdit = (task: Task) => {
+  const handleEdit = useCallback((task: Task) => {
     setEditId(task.id);
-    setEditTitle(task.title);
-    setEditDescription(task.description);
-    setEditSubject(task.subject || "Magyar");
-    setEditClassGrade(task.class_grade || 8);
-    setEditDifficulty(task.difficulty || "Közepes");
-  };
+    editTaskForm.reset({
+      title: task.title,
+      description: task.description,
+      subject: task.subject,
+      class_grade: task.class_grade,
+      difficulty: task.difficulty
+    });
+  }, [editTaskForm]);
 
-  const cancelEdit = () => {
+  const cancelEdit = useCallback(() => {
     setEditId(null);
-    setEditTitle('');
-    setEditDescription('');
-    setEditSubject('Magyar');
-    setEditClassGrade(8);
-    setEditDifficulty('Közepes');
-  };
+    editTaskForm.reset();
+  }, [editTaskForm]);
 
-  const handleSaveEdit = () => {
-    // Validation
-    if (!editTitle.trim()) {
-      alert("A cím nem lehet üres!");
-      return;
+  async function handleSaveEdit(values: TaskFormData) {
+    if (!editId) return;
+    
+    try {
+      await api.put(
+        API_ENDPOINTS.tasks.update(editId),
+        {
+          title: values.title.trim(),
+          description: values.description.trim(),
+          subject: values.subject,
+          class_grade: values.class_grade,
+          difficulty: values.difficulty
+        },
+        getAuthHeader()
+      );
+      
+      await fetchTasks();
+      cancelEdit();
+      alert('Feladat sikeresen frissítve!');
+    } catch (error) {
+      console.error('Error updating task:', error);
+      alert('Hiba a feladat frissítése során');
     }
-    if (!editDescription.trim()) {
-      alert("A leírás nem lehet üres!");
-      return;
-    }
-
-    api.put(
-      `/tasks/${editId}`,
-      { 
-        title: editTitle.trim(), 
-        description: editDescription.trim(), 
-        subject: editSubject, 
-        class_grade: editClassGrade, 
-        difficulty: editDifficulty 
-      },
-      getAuthHeader()
-    )
-      .then(() => {
-        fetchTasks();
-        cancelEdit();
-        alert("Feladat sikeresen frissítve!");
-      })
-      .catch(err => {
-        console.error(err);
-        alert("Hiba a feladat frissítése során");
-      });
-  };
+  }
 
   // Group tasks by subject
-  const groupedTasks: { [subject: string]: Task[] } = tasks.reduce((acc, task) => {
-    if (!acc[task.subject]) acc[task.subject] = [];
-    acc[task.subject].push(task);
-    return acc;
-  }, {} as { [subject: string]: Task[] });
+  const groupedTasks = useMemo(() => {
+    return tasks.reduce((acc, task) => {
+      if (!acc[task.subject]) acc[task.subject] = [];
+      acc[task.subject].push(task);
+      return acc;
+    }, {} as { [subject: string]: Task[] });
+  }, [tasks]);
 
   // Collapse all groups by default when tasks change
   useEffect(() => {
@@ -184,6 +160,14 @@ export default function AdminTasks() {
   const toggleCollapse = (subject: string) => {
     setCollapsed(prev => ({ ...prev, [subject]: !prev[subject] }));
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-pink-50 to-purple-100 flex items-center justify-center">
+        <div className="text-xl">Betöltés...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-pink-50 to-purple-100">
@@ -205,72 +189,51 @@ export default function AdminTasks() {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-bold mb-4 text-green-700">Új feladat létrehozása</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Cím *
-                  </label>
-                  <input
-                    type="text"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="Feladat címe"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Leírás *
-                  </label>
-                  <textarea
-                    value={newDescription}
-                    onChange={(e) => setNewDescription(e.target.value)}
-                    rows={3}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="Feladat részletes leírása"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tantárgy
-                  </label>
-                  <select
-                    value={newSubject}
-                    onChange={(e) => setNewSubject(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="Magyar">Magyar</option>
-                    <option value="Matematika">Matematika</option>
-                    <option value="Történelem">Történelem</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Osztály
-                  </label>
-                  <select
-                    value={newClassGrade}
-                    onChange={(e) => setNewClassGrade(Number(e.target.value))}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value={4}>4. osztály</option>
-                    <option value={6}>6. osztály</option>
-                    <option value={8}>8. osztály</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nehézség
-                  </label>
-                  <select
-                    value={newDifficulty}
-                    onChange={(e) => setNewDifficulty(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="Könnyű">Könnyű</option>
-                    <option value="Közepes">Közepes</option>
-                    <option value="Nehéz">Nehéz</option>
-                  </select>
-                </div>
+                <FormField
+                  label="Cím"
+                  name="title"
+                  value={newTaskForm.values.title}
+                  onChange={(value) => newTaskForm.setField('title', value)}
+                  onBlur={() => newTaskForm.setTouched('title')}
+                  placeholder="Feladat címe"
+                  required
+                  error={newTaskForm.errors.title}
+                  className="md:col-span-2"
+                />
+                <FormField
+                  label="Leírás"
+                  name="description"
+                  type="textarea"
+                  value={newTaskForm.values.description}
+                  onChange={(value) => newTaskForm.setField('description', value)}
+                  onBlur={() => newTaskForm.setTouched('description')}
+                  placeholder="Feladat részletes leírása"
+                  rows={3}
+                  required
+                  error={newTaskForm.errors.description}
+                  className="md:col-span-2"
+                />
+                <SelectField
+                  label="Tantárgy"
+                  name="subject"
+                  value={newTaskForm.values.subject}
+                  onChange={(value) => newTaskForm.setField('subject', value)}
+                  options={TASK_OPTIONS.subjects}
+                />
+                <SelectField
+                  label="Osztály"
+                  name="class_grade"
+                  value={newTaskForm.values.class_grade}
+                  onChange={(value) => newTaskForm.setField('class_grade', Number(value))}
+                  options={TASK_OPTIONS.grades}
+                />
+                <SelectField
+                  label="Nehézség"
+                  name="difficulty"
+                  value={newTaskForm.values.difficulty}
+                  onChange={(value) => newTaskForm.setField('difficulty', value)}
+                  options={TASK_OPTIONS.difficulties}
+                />
               </div>
               <div className="flex justify-end space-x-3 mt-6">
                 <button
@@ -280,10 +243,11 @@ export default function AdminTasks() {
                   Mégse
                 </button>
                 <button
-                  onClick={handleCreateNewTask}
-                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200"
+                  onClick={newTaskForm.handleSubmit}
+                  disabled={newTaskForm.isSubmitting || newTaskForm.hasErrors}
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-2 px-6 rounded-lg transition duration-200"
                 >
-                  Létrehozás
+                  {newTaskForm.isSubmitting ? 'Létrehozás...' : 'Létrehozás'}
                 </button>
               </div>
             </div>
@@ -308,70 +272,49 @@ export default function AdminTasks() {
                       <div>
                         <h3 className="text-lg font-semibold mb-4 text-blue-700">Feladat szerkesztése</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Cím *
-                            </label>
-                            <input
-                              type="text"
-                              value={editTitle}
-                              onChange={(e) => setEditTitle(e.target.value)}
-                              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                          </div>
-                          <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Leírás *
-                            </label>
-                            <textarea
-                              value={editDescription}
-                              onChange={(e) => setEditDescription(e.target.value)}
-                              rows={3}
-                              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Tantárgy
-                            </label>
-                            <select
-                              value={editSubject}
-                              onChange={(e) => setEditSubject(e.target.value)}
-                              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                              <option value="Magyar">Magyar</option>
-                              <option value="Matematika">Matematika</option>
-                              <option value="Történelem">Történelem</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Osztály
-                            </label>
-                            <select
-                              value={editClassGrade}
-                              onChange={(e) => setEditClassGrade(Number(e.target.value))}
-                              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                              <option value={4}>4. osztály</option>
-                              <option value={6}>6. osztály</option>
-                              <option value={8}>8. osztály</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Nehézség
-                            </label>
-                            <select
-                              value={editDifficulty}
-                              onChange={(e) => setEditDifficulty(e.target.value)}
-                              className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                              <option value="Könnyű">Könnyű</option>
-                              <option value="Közepes">Közepes</option>
-                              <option value="Nehéz">Nehéz</option>
-                            </select>
-                          </div>
+                          <FormField
+                            label="Cím"
+                            name="title"
+                            value={editTaskForm.values.title}
+                            onChange={(value) => editTaskForm.setField('title', value)}
+                            onBlur={() => editTaskForm.setTouched('title')}
+                            required
+                            error={editTaskForm.errors.title}
+                            className="md:col-span-2"
+                          />
+                          <FormField
+                            label="Leírás"
+                            name="description"
+                            type="textarea"
+                            value={editTaskForm.values.description}
+                            onChange={(value) => editTaskForm.setField('description', value)}
+                            onBlur={() => editTaskForm.setTouched('description')}
+                            rows={3}
+                            required
+                            error={editTaskForm.errors.description}
+                            className="md:col-span-2"
+                          />
+                          <SelectField
+                            label="Tantárgy"
+                            name="subject"
+                            value={editTaskForm.values.subject}
+                            onChange={(value) => editTaskForm.setField('subject', value)}
+                            options={TASK_OPTIONS.subjects}
+                          />
+                          <SelectField
+                            label="Osztály"
+                            name="class_grade"
+                            value={editTaskForm.values.class_grade}
+                            onChange={(value) => editTaskForm.setField('class_grade', Number(value))}
+                            options={TASK_OPTIONS.grades}
+                          />
+                          <SelectField
+                            label="Nehézség"
+                            name="difficulty"
+                            value={editTaskForm.values.difficulty}
+                            onChange={(value) => editTaskForm.setField('difficulty', value)}
+                            options={TASK_OPTIONS.difficulties}
+                          />
                         </div>
                         <div className="flex justify-end space-x-3 mt-6">
                           <button
@@ -381,10 +324,11 @@ export default function AdminTasks() {
                             Mégse
                           </button>
                           <button
-                            onClick={handleSaveEdit}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition duration-200"
+                            onClick={editTaskForm.handleSubmit}
+                            disabled={editTaskForm.isSubmitting || editTaskForm.hasErrors}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-2 px-6 rounded-lg transition duration-200"
                           >
-                            Mentés
+                            {editTaskForm.isSubmitting ? 'Mentés...' : 'Mentés'}
                           </button>
                         </div>
                       </div>
