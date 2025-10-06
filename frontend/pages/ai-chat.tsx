@@ -1,5 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import Navbar from '../components/Navbar';
+import { useRouter } from 'next/router';
+import api from '../lib/api';
 
 interface ChatMessage {
   id: string;
@@ -32,7 +35,8 @@ const AIChatPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showSources, setShowSources] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { getAuthHeader } = useAuth();
+  const { currentUser, loading, getAuthHeader } = useAuth();
+  const router = useRouter();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -58,26 +62,19 @@ const AIChatPage: React.FC = () => {
 
     try {
       const authHeader = getAuthHeader();
-      const response = await fetch('/api/rag/query', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(authHeader || {}),
-        },
-        body: JSON.stringify({
-          query: inputMessage,
-          context_k: 5,
-          max_tokens: 500,
-          temperature: 0.7,
-          include_sources: true,
-        }),
-      });
+      const response = await api.post('/rag/query', {
+        query: inputMessage,
+        context_k: 5,
+        max_tokens: 500,
+        temperature: 0.7,
+        include_sources: true,
+      }, authHeader);
 
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const ragResponse: RAGResponse = await response.json();
+      const ragResponse: RAGResponse = response.data;
 
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -111,10 +108,24 @@ const AIChatPage: React.FC = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-md h-[80vh] flex flex-col">
+    <div className="min-h-screen bg-gray-50">
+      <Navbar 
+        username={currentUser?.name}
+        userRole={currentUser?.role}
+        onDashboardClick={() => router.push('/dashboard')}
+      />
+      <div className="p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-lg shadow-md h-[80vh] flex flex-col">
           <div className="p-4 border-b">
             <div className="flex justify-between items-center">
               <h1 className="text-xl font-bold">AI Tanár Asszisztens</h1>
@@ -239,6 +250,7 @@ const AIChatPage: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 };

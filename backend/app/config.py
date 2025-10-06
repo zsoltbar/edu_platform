@@ -32,3 +32,7 @@ class Settings(BaseSettings):
 
 # 🔧 Példányosítás (importálható bárhonnan)
 settings = Settings()
+
+def get_settings() -> Settings:
+    """Get application settings instance."""
+    return settings

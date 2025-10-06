@@ -117,8 +117,6 @@ def generate_next_question(req: NextQuestionRequest):
             difficulty=task.difficulty
         )
         create_task(new_task)
-    else:
-        print("Similar question found, not adding to database.")
 
     return {
         "explanation": feedback,

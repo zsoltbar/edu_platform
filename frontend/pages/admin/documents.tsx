@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useRouter } from 'next/router';
+import Navbar from '../../components/Navbar';
+import api from '../../lib/api';
+import { TASK_OPTIONS } from '../../constants';
 
 const DocumentUploadPage: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -11,7 +14,7 @@ const DocumentUploadPage: React.FC = () => {
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState<'success' | 'error' | ''>('');
   
-  const { getAuthHeader } = useAuth();
+  const { currentUser, loading, getAuthHeader } = useAuth();
   const router = useRouter();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,20 +41,14 @@ const DocumentUploadPage: React.FC = () => {
 
     try {
       const authHeader = getAuthHeader();
-      const response = await fetch('/api/rag/upload', {
-        method: 'POST',
+      const response = await api.post('/rag/upload', formData, {
         headers: {
-          ...(authHeader || {}),
+          'Content-Type': 'multipart/form-data',
+          ...('headers' in authHeader ? authHeader.headers : {}),
         },
-        body: formData,
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Upload failed');
-      }
-
-      const result = await response.json();
+      const result = response.data;
       setMessage(`Sikeres feltöltés! ${result.chunks_processed} chunk feldolgozva.`);
       setMessageType('success');
       
@@ -73,9 +70,25 @@ const DocumentUploadPage: React.FC = () => {
     }
   };
 
+  
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      <Navbar 
+        username={currentUser?.name}
+        userRole={currentUser?.role}
+        onDashboardClick={() => router.push('/dashboard')}
+      />
+      <div className="p-4">
+        <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h1 className="text-2xl font-bold mb-6">Dokumentum Feltöltés</h1>
           <p className="text-gray-600 mb-6">
@@ -127,19 +140,11 @@ const DocumentUploadPage: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Válasszon tantárgyat</option>
-                <option value="Matematika">Matematika</option>
-                <option value="Fizika">Fizika</option>
-                <option value="Kémia">Kémia</option>
-                <option value="Biológia">Biológia</option>
-                <option value="Történelem">Történelem</option>
-                <option value="Földrajz">Földrajz</option>
-                <option value="Magyar irodalom">Magyar irodalom</option>
-                <option value="Magyar nyelvtan">Magyar nyelvtan</option>
-                <option value="Angol nyelv">Angol nyelv</option>
-                <option value="Német nyelv">Német nyelv</option>
-                <option value="Francia nyelv">Francia nyelv</option>
-                <option value="Informatika">Informatika</option>
-                <option value="Egyéb">Egyéb</option>
+                {TASK_OPTIONS.subjects.map((subject) => (
+                  <option key={subject.value} value={subject.value}>
+                    {subject.label}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -155,8 +160,10 @@ const DocumentUploadPage: React.FC = () => {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Válasszon évfolyamot</option>
-                {[9, 10, 11, 12].map(num => (
-                  <option key={num} value={num}>{num}. évfolyam</option>
+                {TASK_OPTIONS.grades.map((grade) => (
+                  <option key={grade.value} value={grade.value}>
+                    {grade.label}
+                  </option>
                 ))}
               </select>
             </div>
@@ -196,76 +203,10 @@ const DocumentUploadPage: React.FC = () => {
           {/* Knowledge Base Stats */}
           <div className="mt-8 pt-6 border-t border-gray-200">
             <h3 className="text-lg font-medium mb-3">Tudásbázis Statisztika</h3>
-            <KnowledgeBaseStats />
           </div>
         </div>
       </div>
     </div>
-  );
-};
-
-const KnowledgeBaseStats: React.FC = () => {
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const { getAuthHeader } = useAuth();
-
-  const loadStats = async () => {
-    setLoading(true);
-    try {
-      const authHeader = getAuthHeader();
-      const response = await fetch('/api/rag/stats', {
-        headers: {
-          ...(authHeader || {}),
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      }
-    } catch (error) {
-      console.error('Error loading stats:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  React.useEffect(() => {
-    loadStats();
-  }, []);
-
-  if (loading) {
-    return <div className="text-gray-500">Betöltés...</div>;
-  }
-
-  if (!stats) {
-    return <div className="text-gray-500">Nincs elérhető statisztika</div>;
-  }
-
-  return (
-    <div className="grid grid-cols-2 gap-4">
-      <div className="bg-blue-50 p-3 rounded">
-        <div className="text-lg font-semibold text-blue-800">{stats.total_documents}</div>
-        <div className="text-sm text-blue-600">Dokumentum</div>
-      </div>
-      
-      <div className="bg-green-50 p-3 rounded">
-        <div className="text-lg font-semibold text-green-800">{stats.subjects?.length || 0}</div>
-        <div className="text-sm text-green-600">Tantárgy</div>
-      </div>
-
-      {stats.subjects && stats.subjects.length > 0 && (
-        <div className="col-span-2">
-          <div className="text-sm text-gray-600 mb-2">Tantárgyak:</div>
-          <div className="flex flex-wrap gap-1">
-            {stats.subjects.map((subject: string) => (
-              <span key={subject} className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs">
-                {subject}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
