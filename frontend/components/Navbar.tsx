@@ -59,7 +59,6 @@ export default function Navbar({ username, userRole, onDashboardClick }: NavbarP
           <>
             <Link href="/admin/tasks" className="hover:text-gray-300">Tasks</Link>
             <Link href="/admin/users" className="hover:text-gray-300">Users</Link>
-            <Link href="/admin/documents" className="hover:text-green-300">Docs</Link>
           </>
         )}
       </div>

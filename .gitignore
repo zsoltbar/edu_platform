@@ -9,3 +9,9 @@ frontend/node_modules/
 frontend/package-lock.json
 
 backend/chroma_db/
+
+# RAG Pipeline
+rag-pipeline/.env
+rag-pipeline/documents/
+rag-pipeline/processing_report_*.json
+rag-pipeline/.ipynb_checkpoints/
