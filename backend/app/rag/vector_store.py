@@ -94,7 +94,6 @@ class VectorStore:
                 embeddings=embeddings,
                 ids=ids
             )
-            logger.info(f"Added {len(documents)} documents to vector store")
             return ids
         except Exception as e:
             logger.error(f"Error adding documents: {e}")

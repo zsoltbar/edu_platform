@@ -167,6 +167,8 @@ class DocumentProcessor:
         # Common patterns for educational content
         filename_lower = filename.lower()
         
+        metadata['filename'] = filename_lower
+
         # Extract grade
         grade_patterns = [
             r'grade[\s_-]*([0-9]+)',
@@ -183,12 +185,14 @@ class DocumentProcessor:
         
         # Extract subject
         subjects = {
-            'math': ['math', 'matematik', 'algebra', 'geometry', 'calculus'],
-            'science': ['science', 'termeszet', 'physics', 'fizika', 'chemistry', 'kemia', 'biology', 'biologia'],
-            'history': ['history', 'tortenet', 'historical'],
-            'geography': ['geography', 'foldrajz', 'geo'],
-            'literature': ['literature', 'irodalom', 'english', 'angol'],
-            'hungarian': ['hungarian', 'magyar', 'nyelv']
+            'matematika': ['matematika', 'matek'],
+            'fizika': ['fizika'],
+            'kemia': ['kemia'],
+            'biologia': ['biologia'],
+            'tortenelem': ['tortenelem', 'tori'],
+            'foldrajz': ['foldrajz','termeszettudomany'],
+            'irodalom': ['irodalom'],
+            'nyelvtan': ['magyar', 'nyelvtan']
         }
         
         for subject, keywords in subjects.items():
@@ -201,12 +205,12 @@ class DocumentProcessor:
         
         # Extract difficulty
         if any(word in filename_lower for word in ['easy', 'konnyu', 'basic', 'kezdo']):
-            metadata['difficulty'] = 'easy'
+            metadata['difficulty'] = 'konnyu'
         elif any(word in filename_lower for word in ['hard', 'nehez', 'advanced', 'halado']):
-            metadata['difficulty'] = 'hard'
+            metadata['difficulty'] = 'nehez'
         elif any(word in filename_lower for word in ['medium', 'kozepes', 'intermediate']):
-            metadata['difficulty'] = 'medium'
-        
+            metadata['difficulty'] = 'kozepes'
+
         return metadata
     
     def _extract_text(self, file_path: Path) -> str:

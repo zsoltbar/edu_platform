@@ -11,7 +11,9 @@ interface ChatMessage {
   timestamp: Date;
   sources?: Array<{
     content: string;
-    metadata: any;
+    grade: string;
+    source: string;
+    subject: string;
     score: number;
   }>;
 }
@@ -24,7 +26,9 @@ interface RAGResponse {
   model_used: string;
   sources?: Array<{
     content: string;
-    metadata: any;
+    grade: string;
+    source: string;
+    subject: string;
     score: number;
   }>;
 }
@@ -183,25 +187,27 @@ const AIChatPage: React.FC = () => {
                         </div>
                         {message.sources && message.sources.length > 0 ? (
                           message.sources.slice(0, 3).map((source, idx) => (
-                            <div key={idx} className="text-xs bg-white p-2 rounded mb-2">
-                              <div className="font-medium mb-1">
-                                {source.metadata?.subject && (
-                                  <span className="bg-blue-100 text-blue-800 px-1 rounded mr-1">
-                                    {source.metadata.subject}
-                                  </span>
-                                )}
-                                {source.metadata?.class_grade && (
-                                  <span className="bg-green-100 text-green-800 px-1 rounded">
-                                    {source.metadata.class_grade}. osztály
-                                  </span>
-                                )}
+                            <div key={idx} className="text-xs bg-white p-3 rounded-lg mb-2 border border-gray-200">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-1">
+                                  {source.subject && (
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-xs font-medium">
+                                      {source.subject}
+                                    </span>
+                                  )}
+                                  {source.grade && (
+                                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded-md text-xs">
+                                      {source.grade}. osztály
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-md text-xs font-medium">
+                                  {Math.round(source.score * 100)}% relevancia
+                                </span>
                               </div>
-                              <div className="text-gray-600">
+                              <div className="text-gray-600 text-sm">
                                 {source.content.substring(0, 150)}
                                 {source.content.length > 150 && '...'}
-                              </div>
-                              <div className="text-gray-400 mt-1">
-                                Relevancia: {Math.round(source.score * 100)}%
                               </div>
                             </div>
                           ))

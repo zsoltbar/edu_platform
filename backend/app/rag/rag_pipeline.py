@@ -29,8 +29,11 @@ class RAGPipeline:
         collection_name: str = "school_knowledge",
         embedding_model: str = "all-MiniLM-L6-v2",
         openai_model: str = "gpt-3.5-turbo",
+        openai_embedding_model: str = "text-embedding-3-large",
+        use_openai_embeddings: bool = False,
         chunk_size: int = 1000,
-        chunk_overlap: int = 200
+        chunk_overlap: int = 200,
+        score_threshold: float = 0.2
     ):
         """
         Initialize RAG pipeline.
@@ -43,6 +46,7 @@ class RAGPipeline:
             openai_model: OpenAI model for generation
             chunk_size: Document chunk size
             chunk_overlap: Overlap between chunks
+            score_threshold: Minimum similarity score for retrieval (0.0-1.0)
         """
         self.openai_api_key = openai_api_key
         self.openai_model = openai_model
@@ -50,10 +54,14 @@ class RAGPipeline:
         # Initialize OpenAI client
         self.openai_client = OpenAI(api_key=openai_api_key)
         
+        # Store embedding configuration
+        self.use_openai_embeddings = use_openai_embeddings
+        
         # Initialize components
         self.embedding_service = EmbeddingService(
             openai_api_key=openai_api_key,
-            model_name=embedding_model
+            model_name=embedding_model,
+            openai_model=openai_embedding_model
         )
         
         self.vector_store = VectorStore(
@@ -68,13 +76,11 @@ class RAGPipeline:
         
         self.retriever = KnowledgeRetriever(
             vector_store=self.vector_store,
-            embedding_service=self.embedding_service
+            embedding_service=self.embedding_service,
+            score_threshold=score_threshold,
+            use_openai_embeddings=use_openai_embeddings
         )
-    
-
-    
-
-    
+        
     async def generate_response(
         self,
         query: str,
@@ -166,8 +172,8 @@ class RAGPipeline:
         return """Te egy oktatási AI asszisztens vagy, aki segíti a tanulókat és tanárokat.
 
 Feladataid:
-1. Válaszolj a kérdésekre a megadott kontextus alapján
-2. Ha a kontextusban nincs releváns információ, jelezd ezt
+1. Válaszolj a kérdésekre a megadott kontextus alapján, de ha a kontextus nem teljesen releváns, használhatod általános tudásodat is
+2. Ha található valamilyen kapcsolódó információ a kontextusban, használd fel azt
 3. Használj egyszerű, érthető nyelvet
 4. Adj konkrét példákat, ha lehet
 5. Segíts a tanulási folyamatban
@@ -178,7 +184,7 @@ Stílus:
 - Magyar nyelv használata
 - Strukturált válaszok
 
-Ha bizonytalan vagy, kérdezz vissza vagy javasolj további forrásokat."""
+Ha a kontextus csak részben releváns, akkor is próbálj hasznos választ adni. Csak akkor mondd, hogy nincs releváns információ, ha a kontextus egyáltalán nem kapcsolódik a kérdéshez."""
     
     def _create_user_prompt(self, query: str, context: str) -> str:
         """Create user prompt with query and context."""
@@ -239,20 +245,27 @@ Válaszolj a kérdésre a fenti kontextus alapján. Ha a kontextus nem tartalmaz
         try:
             total_docs = self.vector_store.count_documents()
             
-            # Get sample documents to analyze
-            sample_docs = self.vector_store.get_documents_by_metadata({}, limit=100)
+            if total_docs == 0:
+                return {
+                    "total_documents": 0,
+                    "subjects": [],
+                    "grades": [],
+                    "sources_count": 0,
+                    "embedding_dimension": 0
+                }
+            
+            # FIX: Get ALL documents to ensure we capture all subjects/grades/sources
+            # The previous limit=100 was causing the issue where only documents from
+            # one subject were being returned due to ChromaDB clustering
+            sample_docs = self.vector_store.get_documents_by_metadata({})  # No limit!
             
             subjects = set()
             grades = set()
             sources = set()
             
-            # Debug: log sample metadata to understand structure
-            if sample_docs["metadatas"]:
-                logger.info(f"Sample metadata keys from first 3 documents:")
-                for i, metadata in enumerate(sample_docs["metadatas"][:3]):
-                    logger.info(f"  Doc {i}: {list(metadata.keys()) if metadata else 'None'}")
-                    if metadata:
-                        logger.info(f"    Content: {metadata}")
+            # Process ALL documents to get accurate stats
+            if sample_docs and sample_docs.get("metadatas"):
+                logger.info(f"Processing {len(sample_docs['metadatas'])} documents for stats")
                 
                 for metadata in sample_docs["metadatas"]:
                     if metadata:  # Check if metadata exists
@@ -261,20 +274,17 @@ Válaszolj a kérdésre a fenti kontextus alapján. Ha a kontextus nem tartalmaz
                         grade = metadata.get("class_grade") or metadata.get("grade") or metadata.get("Grade")
                         source = metadata.get("source") or metadata.get("Source") or metadata.get("filename")
                         
-                        # Debug log each document's metadata values
-                        logger.info(f"Processing metadata: subject='{subject}', grade='{grade}', source='{source}'")
-                        
                         if subject:
                             subjects.add(subject)
-                            logger.info(f"Added subject: {subject} (total unique subjects: {len(subjects)})")
                         if grade:
                             grade_value = int(grade) if str(grade).isdigit() else grade
                             grades.add(grade_value)
-                            logger.info(f"Added grade: {grade_value} (total unique grades: {len(grades)})")
                         if source:
                             sources.add(source)
             
             logger.info(f"Stats extraction result: subjects={len(subjects)}, grades={len(grades)}, sources={len(sources)}")
+            logger.info(f"Subjects found: {sorted(list(subjects))}")
+            logger.info(f"Grades found: {sorted(list(grades))}")
             
             return {
                 "total_documents": total_docs,

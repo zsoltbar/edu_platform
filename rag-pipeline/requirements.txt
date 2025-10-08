@@ -10,10 +10,6 @@ openai                   # OpenAI API client
 python-dotenv            # environment variables
 pydantic                 # data validation
 pydantic-settings        # configuration management
-pathlib                  # path handling
-logging                  # logging functionality
-hashlib                  # file hashing
-asyncio                  # async operations
 
 # Jupyter notebook dependencies
 jupyter                  # Jupyter notebook environment

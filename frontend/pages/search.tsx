@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useRouter } from 'next/router';
 import Navbar from '../components/Navbar';
@@ -21,6 +21,14 @@ interface SearchResponse {
   query: string;
 }
 
+interface VectorDbStats {
+  total_documents: number;
+  subjects: string[];
+  grades: number[];
+  sources_count: number;
+  embedding_dimension: number;
+}
+
 const SearchPage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [subject, setSubject] = useState('');
@@ -30,9 +38,34 @@ const SearchPage: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState('');
   const [searchPerformed, setSearchPerformed] = useState(false);
+  const [stats, setStats] = useState<VectorDbStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsError, setStatsError] = useState('');
   
   const { currentUser, loading, getAuthHeader } = useAuth();
   const router = useRouter();
+
+  // Fetch vectordb statistics on component mount
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!currentUser) return;
+      
+      try {
+        setStatsLoading(true);
+        const authHeader = getAuthHeader();
+        const response = await api.get('/rag/stats', authHeader);
+        setStats(response.data);
+        setStatsError('');
+      } catch (error) {
+        console.error('Stats fetch error:', error);
+        setStatsError('Nem sikerült betölteni a statisztikákat');
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, [currentUser, getAuthHeader]);
 
   const performSearch = async () => {
     if (!query.trim()) {
@@ -89,6 +122,72 @@ const SearchPage: React.FC = () => {
       
       <div className="container mx-auto px-4 py-6">
         <div className="max-w-4xl mx-auto">
+          {/* Statistics Card */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-lg font-bold mb-4 flex items-center">
+              📊 Tudásbázis Statisztikák
+            </h2>
+            
+            {statsLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mr-2"></div>
+                <span className="text-gray-600">Statisztikák betöltése...</span>
+              </div>
+            ) : statsError ? (
+              <div className="text-red-600 py-2">
+                ⚠️ {statsError}
+              </div>
+            ) : stats ? (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="bg-blue-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-blue-600">{stats.total_documents}</div>
+                  <div className="text-sm text-gray-600">Dokumentum</div>
+                </div>
+                <div className="bg-green-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-green-600">{stats.subjects.length}</div>
+                  <div className="text-sm text-gray-600">Tantárgy</div>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-purple-600">{stats.grades.length}</div>
+                  <div className="text-sm text-gray-600">Évfolyam</div>
+                </div>
+                <div className="bg-orange-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-orange-600">{stats.sources_count}</div>
+                  <div className="text-sm text-gray-600">Forrás</div>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-gray-600">{stats.embedding_dimension}</div>
+                  <div className="text-sm text-gray-600">Dimenzió</div>
+                </div>
+              </div>
+            ) : null}
+            
+            {stats && (
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-2">Elérhető tantárgyak:</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {stats.subjects.map((subject, index) => (
+                      <span key={index} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">
+                        {subject}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-2">Elérhető évfolyamok:</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {stats.grades.sort((a, b) => a - b).map((grade, index) => (
+                      <span key={index} className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                        {grade}. osztály
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <h1 className="text-2xl font-bold mb-6">Tudásbázis Keresés</h1>
             <p className="text-gray-600 mb-6">

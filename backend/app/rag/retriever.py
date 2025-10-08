@@ -40,7 +40,8 @@ class KnowledgeRetriever:
         vector_store: VectorStore,
         embedding_service: EmbeddingService,
         default_k: int = 5,
-        score_threshold: float = 0.7
+        score_threshold: float = 0.7,
+        use_openai_embeddings: bool = False
     ):
         """
         Initialize knowledge retriever.
@@ -55,6 +56,7 @@ class KnowledgeRetriever:
         self.embedding_service = embedding_service
         self.default_k = default_k
         self.score_threshold = score_threshold
+        self.use_openai_embeddings = use_openai_embeddings
     
     async def retrieve(
         self,
@@ -93,8 +95,8 @@ class KnowledgeRetriever:
         filters: Optional[Dict[str, Any]] = None
     ) -> List[RetrievedDocument]:
         """Basic similarity-based retrieval."""
-        # Get query embedding
-        query_embedding = await self.embedding_service.embed_query(query)
+        # Get query embedding using configured embedding method
+        query_embedding = await self.embedding_service.embed_query(query, use_openai=self.use_openai_embeddings)
         
         # Search vector store
         results = self.vector_store.similarity_search(
@@ -160,12 +162,12 @@ class KnowledgeRetriever:
         if not candidates:
             return []
         
-        # Get query embedding
-        query_embedding = await self.embedding_service.embed_query(query)
+        # Get query embedding using configured embedding method
+        query_embedding = await self.embedding_service.embed_query(query, use_openai=self.use_openai_embeddings)
         
-        # Get embeddings for all candidates
+        # Get embeddings for all candidates using configured embedding method
         candidate_texts = [doc.content for doc in candidates]
-        candidate_embeddings = await self.embedding_service.embed_documents(candidate_texts)
+        candidate_embeddings = await self.embedding_service.embed_documents(candidate_texts, use_openai=self.use_openai_embeddings)
         
         selected = []
         remaining_indices = list(range(len(candidates)))

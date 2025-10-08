@@ -22,7 +22,13 @@ class Settings(BaseSettings):
     VECTOR_STORE_PATH: str = Field(default="./chroma_db", env="VECTOR_STORE_PATH")
     COLLECTION_NAME: str = Field(default="school_knowledge", env="COLLECTION_NAME")
     OPENAI_MODEL: str = Field(default="gpt-3.5-turbo", env="OPENAI_MODEL")
-    EMBEDDING_MODEL: str = Field(default="all-MiniLM-L6-v2", env="EMBEDDING_MODEL")
+    
+    # 🔤 Embedding Settings
+    USE_OPENAI_EMBEDDINGS: bool = Field(default=False, env="USE_OPENAI_EMBEDDINGS")
+    EMBEDDING_MODEL: str = Field(default="intfloat/multilingual-e5-base", env="EMBEDDING_MODEL")
+    OPENAI_EMBEDDING_MODEL: str = Field(default="text-embedding-3-large", env="OPENAI_EMBEDDING_MODEL")
+    
+    # 📄 Document Processing
     CHUNK_SIZE: int = Field(default=500, env="CHUNK_SIZE")
     CHUNK_OVERLAP: int = Field(default=50, env="CHUNK_OVERLAP")
 

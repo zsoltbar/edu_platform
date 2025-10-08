@@ -7,7 +7,7 @@ Settings for the RAG document processing pipeline.
 
 import os
 from pathlib import Path
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings
 from typing import Optional
 
 class RAGPipelineSettings(BaseSettings):

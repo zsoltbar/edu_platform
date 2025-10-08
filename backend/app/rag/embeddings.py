@@ -28,7 +28,7 @@ class EmbeddingService:
         self,
         openai_api_key: Optional[str] = None,
         model_name: str = "all-MiniLM-L6-v2",
-        openai_model: str = "text-embedding-ada-002"
+        openai_model: str = "text-embedding-3-large"
     ):
         """
         Initialize embedding service.
@@ -135,7 +135,13 @@ class EmbeddingService:
     def get_embedding_dimension(self, use_openai: bool = False) -> int:
         """Get embedding dimension."""
         if use_openai:
-            return 1536  # OpenAI ada-002 dimension
+            # text-embedding-3-large has 3072 dimensions, text-embedding-3-small has 1536
+            if "3-large" in self.openai_model:
+                return 3072
+            elif "3-small" in self.openai_model:
+                return 1536
+            else:
+                return 1536  # Default for ada-002 and other older models
         else:
             if self.local_model:
                 return self.local_model.get_sentence_embedding_dimension()

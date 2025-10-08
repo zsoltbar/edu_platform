@@ -32,7 +32,11 @@ def get_rag_pipeline() -> RAGPipeline:
             openai_api_key=settings.OPENAI_API_KEY,
             vector_store_path=getattr(settings, 'VECTOR_STORE_PATH', './chroma_db'),
             collection_name=getattr(settings, 'COLLECTION_NAME', 'school_knowledge'),
-            openai_model=getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo')
+            embedding_model=getattr(settings, 'EMBEDDING_MODEL', 'intfloat/multilingual-e5-base'),
+            openai_model=getattr(settings, 'OPENAI_MODEL', 'gpt-3.5-turbo'),
+            openai_embedding_model=getattr(settings, 'OPENAI_EMBEDDING_MODEL', 'text-embedding-3-large'),
+            use_openai_embeddings=getattr(settings, 'USE_OPENAI_EMBEDDINGS', False),
+            score_threshold=getattr(settings, 'SCORE_THRESHOLD', 0.2)
         )
     return _rag_pipeline
 
@@ -118,6 +122,10 @@ async def search_knowledge_base(
         if request.grade:
             filters["class_grade"] = request.grade
         
+        print(f"Filters applied: {filters}")
+        print(f"Search query: {request.query}")
+        print(f"Search parameters: k={request.k}")
+
         results = await rag_pipeline.search_knowledge_base(
             query=request.query,
             k=request.k,
