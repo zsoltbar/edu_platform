@@ -16,7 +16,7 @@ class RAGPipelineSettings(BaseSettings):
     # OpenAI Configuration
     openai_api_key: str
     openai_model: str = "gpt-3.5-turbo"
-    openai_embedding_model: str = "text-embedding-ada-002"
+    openai_embedding_model: str = "text-embedding-3-large"
     
     # Vector Database Configuration
     vector_db_path: str = "../backend/chroma_db"
@@ -24,7 +24,7 @@ class RAGPipelineSettings(BaseSettings):
     
     # Embedding Configuration
     local_embedding_model: str = "all-MiniLM-L6-v2"
-    use_openai_embeddings: bool = False
+    use_openai_embeddings: bool = True
     
     # Document Processing Configuration
     chunk_size: int = 1000

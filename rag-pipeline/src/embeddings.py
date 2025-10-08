@@ -28,7 +28,7 @@ class EmbeddingService:
         self,
         openai_api_key: Optional[str] = None,
         model_name: str = "all-MiniLM-L6-v2",
-        openai_model: str = "text-embedding-ada-002"
+        openai_model: str = "text-embedding-3-large"
     ):
         """
         Initialize embedding service.

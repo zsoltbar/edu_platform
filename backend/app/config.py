@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = Field(default="gpt-3.5-turbo", env="OPENAI_MODEL")
     
     # 🔤 Embedding Settings
-    USE_OPENAI_EMBEDDINGS: bool = Field(default=False, env="USE_OPENAI_EMBEDDINGS")
+    USE_OPENAI_EMBEDDINGS: bool = Field(default=True, env="USE_OPENAI_EMBEDDINGS")
     EMBEDDING_MODEL: str = Field(default="intfloat/multilingual-e5-base", env="EMBEDDING_MODEL")
     OPENAI_EMBEDDING_MODEL: str = Field(default="text-embedding-3-large", env="OPENAI_EMBEDDING_MODEL")
     
