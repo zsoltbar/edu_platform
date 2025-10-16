@@ -54,8 +54,8 @@ async def get_educational_context(subject: str, topic: str, grade: int) -> str:
                     context_parts.append(context_entry)
                 
                 return f"\n\nReeleváns tankönyvi fejezetek:\n\n" + "\n\n".join(context_parts)
-        except:
-            pass  # Fall back to general search
+        except Exception as e:
+            logger.debug(f"Chapter-specific search failed: {e}")  # Fall back to general search
         
         # Fallback: try general context retrieval
         try:

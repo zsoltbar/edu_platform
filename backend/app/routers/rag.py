@@ -12,14 +12,11 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 
 from ..config import settings
-
 from ..auth import get_current_user
 from ..models import User
 from ..rag.rag_pipeline import RAGPipeline
-from ..config import get_settings
 
 logger = logging.getLogger(__name__)
-settings = get_settings()
 
 # Initialize RAG pipeline (singleton pattern)
 _rag_pipeline = None
@@ -28,7 +25,6 @@ def get_rag_pipeline() -> RAGPipeline:
     """Get or create RAG pipeline instance."""
     global _rag_pipeline
     if _rag_pipeline is None:
-        settings = get_settings()
         _rag_pipeline = RAGPipeline(
             openai_api_key=settings.OPENAI_API_KEY,
             vector_store_path=getattr(settings, 'VECTOR_STORE_PATH', './chroma_db'),
@@ -186,9 +182,9 @@ async def search_knowledge_base(
         if request.grade:
             filters["class_grade"] = request.grade
         
-        print(f"Filters applied: {filters}")
-        print(f"Search query: {request.query}")
-        print(f"Search parameters: k={request.k}")
+        logger.debug(f"Filters applied: {filters}")
+        logger.debug(f"Search query: {request.query}")
+        logger.debug(f"Search parameters: k={request.k}")
 
         results = await rag_pipeline.search_knowledge_base(
             query=request.query,
