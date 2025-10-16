@@ -15,6 +15,10 @@ interface ChatMessage {
     source: string;
     subject: string;
     score: number;
+    chapter_title?: string;
+    chapter_number?: string;
+    topics?: string[];
+    content_type?: string;
   }>;
 }
 
@@ -30,6 +34,10 @@ interface RAGResponse {
     source: string;
     subject: string;
     score: number;
+    chapter_title?: string;
+    chapter_number?: string;
+    topics?: string[];
+    content_type?: string;
   }>;
 }
 
@@ -69,7 +77,7 @@ const AIChatPage: React.FC = () => {
       const response = await api.post('/rag/query', {
         query: inputMessage,
         context_k: 5,
-        max_tokens: 500,
+        max_tokens: 1000,
         temperature: 0.7,
         include_sources: true,
       }, authHeader);
@@ -200,14 +208,47 @@ const AIChatPage: React.FC = () => {
                                       {source.grade}. osztály
                                     </span>
                                   )}
+                                  {source.content_type === 'chapter' && (
+                                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded-md text-xs font-medium">
+                                      📖 Fejezet
+                                    </span>
+                                  )}
                                 </div>
                                 <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded-md text-xs font-medium">
                                   {Math.round(source.score * 100)}% relevancia
                                 </span>
                               </div>
+                              
+                              {/* Chapter information */}
+                              {(source.chapter_title || source.chapter_number) && (
+                                <div className="mb-2 p-2 bg-gray-50 rounded border-l-4 border-blue-400">
+                                  <div className="font-semibold text-gray-700 text-sm">
+                                    {source.chapter_number && `${source.chapter_number}. `}
+                                    {source.chapter_title || 'Fejezet'}
+                                  </div>
+                                  {source.topics && source.topics.length > 0 && (
+                                    <div className="mt-1 flex flex-wrap gap-1">
+                                      {source.topics.slice(0, 3).map((topic, topicIdx) => (
+                                        <span 
+                                          key={topicIdx}
+                                          className="bg-blue-50 text-blue-700 px-1 py-0.5 rounded text-xs"
+                                        >
+                                          {topic}
+                                        </span>
+                                      ))}
+                                      {source.topics.length > 3 && (
+                                        <span className="text-gray-500 text-xs">
+                                          +{source.topics.length - 3} több
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              
                               <div className="text-gray-600 text-sm">
-                                {source.content.substring(0, 150)}
-                                {source.content.length > 150 && '...'}
+                                {source.content.substring(0, source.chapter_title ? 200 : 150)}
+                                {source.content.length > (source.chapter_title ? 200 : 150) && '...'}
                               </div>
                             </div>
                           ))

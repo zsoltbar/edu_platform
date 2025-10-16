@@ -8,8 +8,10 @@ from app.config import get_settings
 import difflib
 import json
 import asyncio
+import logging
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 # Initialize OpenAI client
 if not settings.OPENAI_API_KEY:
@@ -20,27 +22,60 @@ openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 router = APIRouter()
 
 async def get_educational_context(subject: str, topic: str, grade: int) -> str:
-    """Get relevant educational context from RAG documents."""
+    """Get relevant educational context from RAG documents with chapter awareness."""
     try:
         rag_pipeline = get_rag_pipeline()
         
         # Create a query to find relevant educational content
-        query = f"{subject} {topic} {grade}. osztály"
+        query = f"{subject} {topic}"
         
-        # Get relevant context from RAG
-        context_docs = await rag_pipeline.retrieve_context(query, context_k=3)
+        # First try to get chapter-specific content
+        try:
+            chapter_results = await rag_pipeline.search_chapters(
+                query=query,
+                subject=subject,
+                grade=str(grade),
+                k=3
+            )
+            
+            if chapter_results:
+                # Format chapter-based context
+                context_parts = []
+                for chapter in chapter_results[:2]:  # Use top 2 chapters
+                    chapter_title = chapter.get("chapter_title", "Cím nélkül")
+                    chapter_number = chapter.get("chapter_number", "")
+                    content = chapter.get("content", "")
+                    topics = chapter.get("topics", [])
+                    
+                    # Create formatted context entry with chapter info
+                    chapter_header = f"{chapter_number}. {chapter_title}" if chapter_number != "N/A" else chapter_title
+                    topics_str = f" (Témák: {', '.join(topics[:3])})" if topics else ""
+                    
+                    context_entry = f"📖 **{chapter_header}**{topics_str}\n{content[:400]}..."
+                    context_parts.append(context_entry)
+                
+                return f"\n\nReeleváns tankönyvi fejezetek:\n\n" + "\n\n".join(context_parts)
+        except:
+            pass  # Fall back to general search
         
-        if context_docs:
-            # Format the context for AI tutor
-            context_text = "\n\n".join([
-                f"📚 {doc.metadata.get('subject', 'Ismeretlen tantárgy')} - {doc.metadata.get('filename', 'Dokumentum')}:\n{doc.content[:300]}..."
-                for doc in context_docs
-            ])
-            return f"\n\nRelevant educational content from uploaded documents:\n{context_text}"
-        else:
-            return "\n\nNo specific educational content found in uploaded documents for this topic."
+        # Fallback: try general context retrieval
+        try:
+            context_docs = await rag_pipeline.retrieve_context(f"{query} {grade}. osztály", context_k=3)
+            
+            if context_docs:
+                # Format the context for AI tutor
+                context_text = "\n\n".join([
+                    f"📚 {doc.metadata.get('subject', 'Ismeretlen tantárgy')} - {doc.metadata.get('filename', 'Dokumentum')}:\n{doc.content[:300]}..."
+                    for doc in context_docs
+                ])
+                return f"\n\nRelevant educational content from uploaded documents:\n{context_text}"
+        except Exception as e:
+            logger.error(f"Fallback context retrieval failed: {e}")
+            
+        return "\n\nNote: No specific educational content found in uploaded documents for this topic."
             
     except Exception as e:
+        logger.error(f"Error in get_educational_context: {e}")
         # If RAG fails, continue without context
         return "\n\nNote: Could not retrieve additional educational context."
 
@@ -75,7 +110,7 @@ async def ai_tutor(req: TutorRequest, db: Session = Depends(get_db)):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Question: {task.title}\nStudent Answer: {req.student_answer}"}
             ],
-            max_tokens=400  # Increased for more detailed responses
+            max_tokens=settings.AI_TUTOR_MAX_TOKENS
         )
         return {"explanation": response.choices[0].message.content}
     except Exception as e:
@@ -125,7 +160,7 @@ async def generate_next_question(req: NextQuestionRequest, db: Session = Depends
                 {"role": "system", "content": role},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=1000
+            max_tokens=settings.AI_QUESTION_GENERATION_MAX_TOKENS
         )
 
         content = response.choices[0].message.content
@@ -224,7 +259,7 @@ async def generate_task(req: GenerateTaskRequest):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Please generate a new task for topic '{req.topic}' at '{req.difficulty}' difficulty. Respond in {req.language}. Format: Question: ... Answer: ..."}
             ],
-            max_tokens=400  # Increased for more detailed tasks
+            max_tokens=settings.AI_TUTOR_MAX_TOKENS
         )
         content = response.choices[0].message.content
         # Optionally, you can parse the content to separate question and answer if needed

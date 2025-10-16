@@ -85,7 +85,7 @@ class RAGPipeline:
         self,
         query: str,
         context_k: int = 5,
-        max_tokens: int = 500,
+        max_tokens: int = 1000,
         temperature: float = 0.7,
         system_prompt: Optional[str] = None,
         include_sources: bool = True
@@ -168,23 +168,30 @@ class RAGPipeline:
             return await self._fallback_response(query, max_tokens, temperature)
     
     def _create_default_system_prompt(self) -> str:
-        """Create default system prompt for educational AI."""
-        return """Te egy oktatási AI asszisztens vagy, aki segíti a tanulókat és tanárokat.
+        """Create enhanced system prompt for educational AI with chapter awareness."""
+        return """Te egy oktatási AI asszisztens vagy, aki segíti a tanulókat és tanárokat a tankönyvi anyagok alapján.
+
+Speciális képességeid:
+1. A kontextus fejezetek és témakörök szerint szervezett tankönyvi anyagokat tartalmaz
+2. Minden részhez tartozik fejezet cím, témakör és tantárgy információ
+3. Használd fel a fejezet címeket és témákat a strukturált válaszadáshoz
+4. Hivatkozz konkrét fejezetekre, amikor releváns
 
 Feladataid:
-1. Válaszolj a kérdésekre a megadott kontextus alapján, de ha a kontextus nem teljesen releváns, használhatod általános tudásodat is
-2. Ha található valamilyen kapcsolódó információ a kontextusban, használd fel azt
-3. Használj egyszerű, érthető nyelvet
-4. Adj konkrét példákat, ha lehet
-5. Segíts a tanulási folyamatban
+1. Válaszolj a kérdésekre a megadott fejezetek és kontextus alapján
+2. Szervezd a válaszod tantárgyak és témakörök szerint
+3. Használj egyszerű, érthető nyelvet, megfelelően a korosztálynak
+4. Adj konkrét példákat a tankönyvi anyagból
+5. Segíts megérteni a fogalmak közötti kapcsolatokat
 
-Stílus:
+Válasz stílus:
 - Barátságos és támogató hangnem
 - Pedagógiai szemlélet
 - Magyar nyelv használata
-- Strukturált válaszok
+- Strukturált válaszok fejezetekre hivatkozással
+- Kapcsold össze a különböző tantárgyak releváns témait
 
-Ha a kontextus csak részben releváns, akkor is próbálj hasznos választ adni. Csak akkor mondd, hogy nincs releváns információ, ha a kontextus egyáltalán nem kapcsolódik a kérdéshez."""
+Ha a kontextus több fejezetet tartalmaz, szervezd a válaszod ennek megfelelően. Említsd meg a releváns fejezet címeket, hogy a tanuló tudja, melyik tankönyvi részhez kapcsolódik a válasz."""
     
     def _create_user_prompt(self, query: str, context: str) -> str:
         """Create user prompt with query and context."""
@@ -321,5 +328,67 @@ Válaszolj a kérdésre a fenti kontextus alapján. Ha a kontextus nem tartalmaz
             ]
         except Exception as e:
             logger.error(f"Error searching knowledge base: {e}")
+            return []
+    
+    async def search_chapters(
+        self,
+        query: str,
+        subject: Optional[str] = None,
+        grade: Optional[str] = None,
+        k: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Search for relevant chapters with enhanced metadata filtering.
+        
+        Args:
+            query: Search query
+            subject: Filter by subject
+            grade: Filter by grade
+            k: Number of results to return
+            
+        Returns:
+            List of chapter results with enhanced metadata
+        """
+        try:
+            filters = {}
+            
+            # Add filters
+            if subject:
+                filters["subject"] = subject
+            if grade:
+                filters["class_grade"] = grade
+                
+            # Prioritize chapter-type content
+            chapter_docs = await self.retriever.retrieve(
+                query=query + " fejezet",  # Boost chapter relevance
+                k=k,
+                strategy="similarity",
+                filters=filters
+            )
+            
+            # Format results with chapter information
+            chapter_results = []
+            for doc in chapter_docs:
+                metadata = doc.metadata or {}
+                
+                result = {
+                    "content": doc.content[:500] + "..." if len(doc.content) > 500 else doc.content,
+                    "score": doc.score,
+                    "subject": metadata.get("subject", "Ismeretlen"),
+                    "grade": metadata.get("class_grade", metadata.get("grade", "N/A")),
+                    "chapter_title": metadata.get("chapter_title", "Cím nélkül"),
+                    "chapter_number": metadata.get("chapter_number", "N/A"),
+                    "topics": metadata.get("topics", []),
+                    "source": metadata.get("source", metadata.get("filename", "Ismeretlen forrás")),
+                    "word_count": metadata.get("word_count", 0),
+                    "content_type": metadata.get("chunk_type", "standard")
+                }
+                
+                chapter_results.append(result)
+            
+            return chapter_results
+            
+        except Exception as e:
+            logger.error(f"Chapter search failed: {e}")
             return []
     

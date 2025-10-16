@@ -13,12 +13,15 @@ from pydantic import BaseModel, Field
 import os
 from pathlib import Path
 
+from ..config import settings
+
 from ..auth import get_current_user
 from ..models import User
 from ..rag.rag_pipeline import RAGPipeline
 from ..config import get_settings
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 # Initialize RAG pipeline (singleton pattern)
 _rag_pipeline = None
@@ -46,7 +49,7 @@ router = APIRouter(prefix="/rag", tags=["RAG"])
 class RAGQueryRequest(BaseModel):
     query: str = Field(..., description="User query for RAG system")
     context_k: int = Field(5, description="Number of context documents to retrieve", ge=1, le=20)
-    max_tokens: int = Field(500, description="Maximum tokens in response", ge=50, le=2000)
+    max_tokens: int = Field(default_factory=lambda: settings.RAG_MAX_TOKENS, description="Maximum tokens in response", ge=50, le=4000)
     temperature: float = Field(0.7, description="Response creativity", ge=0.0, le=1.0)
     include_sources: bool = Field(True, description="Whether to include source information")
 
@@ -80,14 +83,77 @@ async def query_rag(
     rag_pipeline: RAGPipeline = Depends(get_rag_pipeline)
 ):
     """
-    Query the RAG system for AI-enhanced responses.
+    Query the RAG system for AI-enhanced responses with chapter-aware context.
     
     Uses the school knowledge base to provide contextually relevant answers
-    to educational questions.
+    to educational questions, with enhanced chapter-based source information.
     """
     try:
         logger.info(f"RAG query from user {current_user.id}: {request.query[:50]}...")
         
+        # Try chapter-aware response generation first
+        try:
+            # Attempt to identify subject from query for better chapter search
+            detected_subject = None
+            query_lower = request.query.lower()
+            
+            subject_keywords = {
+                'matematika': ['matek', 'számtan', 'algebra', 'geometria', 'egyenlet'],
+                'természettudomány': ['fizika', 'kémia', 'biológia', 'természet'],
+                'irodalom': ['vers', 'költő', 'író', 'irodalom', 'olvasás'],
+                'történelem': ['történelem', 'háború', 'király', 'múlt'],
+                'nyelvtan': ['nyelvtan', 'magyar', 'fogalmazás', 'szöveg'],
+                'földrajz': ['földrajz', 'térkép', 'ország', 'kontinens']
+            }
+            
+            for subject, keywords in subject_keywords.items():
+                if any(keyword in query_lower for keyword in keywords):
+                    detected_subject = subject
+                    break
+            
+            # Get chapter-based context if subject detected
+            if detected_subject:
+                chapter_results = await rag_pipeline.search_chapters(
+                    query=request.query,
+                    subject=detected_subject,
+                    k=request.context_k
+                )
+                
+                if chapter_results:
+                    # Format sources with chapter information
+                    enhanced_sources = []
+                    for chapter in chapter_results:
+                        source = {
+                            "content": chapter.get("content", ""),
+                            "grade": chapter.get("grade", "N/A"),
+                            "source": chapter.get("source", "Ismeretlen"),
+                            "subject": chapter.get("subject", "Ismeretlen"),
+                            "score": chapter.get("score", 0.0),
+                            "chapter_title": chapter.get("chapter_title", ""),
+                            "chapter_number": chapter.get("chapter_number", ""),
+                            "topics": chapter.get("topics", []),
+                            "content_type": chapter.get("content_type", "chapter")
+                        }
+                        enhanced_sources.append(source)
+                    
+                    # Generate response with chapter context
+                    response = await rag_pipeline.generate_response(
+                        query=request.query,
+                        context_k=request.context_k,
+                        max_tokens=request.max_tokens,
+                        temperature=request.temperature,
+                        include_sources=request.include_sources
+                    )
+                    
+                    # Override sources with chapter-enhanced data
+                    if request.include_sources:
+                        response["sources"] = enhanced_sources
+                    
+                    return RAGQueryResponse(**response)
+        except Exception as e:
+            logger.warning(f"Chapter-aware query failed, falling back to standard: {e}")
+        
+        # Fallback to standard response generation
         response = await rag_pipeline.generate_response(
             query=request.query,
             context_k=request.context_k,

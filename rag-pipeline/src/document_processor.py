@@ -4,12 +4,13 @@ Document Processor
 
 Handles document ingestion, preprocessing, and chunking for RAG pipeline.
 Supports various document formats including PDF, DOCX, TXT, and Markdown.
+Enhanced with chapter-based splitting for Hungarian educational content.
 """
 
 import logging
 import re
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Tuple
 import hashlib
 
 # Document processing imports (with fallbacks)
@@ -32,6 +33,25 @@ except ImportError:
     HAS_MARKDOWN = False
 
 logger = logging.getLogger(__name__)
+
+# Hungarian textbook chapter detection patterns
+CHAPTER_PATTERNS = [
+    r'^\s*(\d+)\.\s*(fejezet|rész|lecke)\s*[:\-]?\s*(.+?)(?:\n|$)',  # "1. fejezet: Címe"
+    r'^\s*([IVX]+)\.\s*(fejezet|rész|lecke)\s*[:\-]?\s*(.+?)(?:\n|$)',  # "I. fejezet: Címe"
+    r'^\s*(\d+)\.\s*([A-ZÁÉÍÓÖŐÚÜŰ][a-záéíóöőúüűA-ZÁÉÍÓÖŐÚÜŰ\s]{5,50})\s*$',  # "1. Nagy Cím"
+    r'^\s*([A-ZÁÉÍÓÖŐÚÜŰ][A-ZÁÉÍÓÖŐÚÜŰ\s]{10,80})\s*\n\s*={3,}\s*$',  # "NAGY CÍM\n====="
+    r'^\s*([A-ZÁÉÍÓÖŐÚÜŰ][a-záéíóöőúüűA-ZÁÉÍÓÖŐÚÜŰ\s]{5,50})\s*\n\s*-{3,}\s*$',  # "Nagy Cím\n-----"
+]
+
+# Educational topic keywords for better categorization
+SUBJECT_KEYWORDS = {
+    'matematika': ['számtan', 'algebra', 'geometria', 'mértan', 'egyenlet', 'függvény', 'statisztika'],
+    'természettudomány': ['fizika', 'kémia', 'biológia', 'földtan', 'ökológia', 'evolúció', 'energia'],
+    'irodalom': ['vers', 'próza', 'dráma', 'költő', 'író', 'műfaj', 'stílus', 'elemzés'],
+    'történelem': ['ókor', 'középkor', 'újkor', 'háború', 'király', 'forradalom', 'kultúra'],
+    'nyelvtan': ['szófaj', 'mondat', 'nyelvtan', 'helyesírás', 'fogalmazás', 'kommunikáció'],
+    'földrajz': ['kontinens', 'óceán', 'éghajlat', 'időjárás', 'népesség', 'gazdaság', 'térképészet']
+}
 
 class DocumentChunk:
     """Represents a chunk of processed document."""
@@ -105,16 +125,54 @@ class DocumentProcessor:
             **(source_metadata or {})
         }
         
-        # Process text into chunks
-        return self.process_text(text, metadata)
+        # Process text into chunks with chapter detection
+        return self.process_text_with_chapters(text, metadata)
     
+    def process_text_with_chapters(
+        self,
+        text: str,
+        base_metadata: Optional[Dict[str, Any]] = None
+    ) -> List[DocumentChunk]:
+        """
+        Process text into document chunks with chapter-aware splitting.
+        
+        Args:
+            text: Text content to process
+            base_metadata: Base metadata for all chunks
+            
+        Returns:
+            List of document chunks with enhanced metadata
+        """
+        # Check if text is empty or too short
+        if not text or len(text.strip()) < 10:
+            logger.warning("Text is empty or too short to process")
+            return []
+
+        # Clean and normalize text
+        cleaned_text = self._clean_text(text)
+        
+        # Check if cleaned text is still valid
+        if not cleaned_text or len(cleaned_text.strip()) < 5:
+            logger.warning("Cleaned text is empty or too short")
+            return []
+
+        # Detect chapters in the text
+        chapters = self._detect_chapters(cleaned_text)
+        
+        if chapters:
+            logger.info(f"Detected {len(chapters)} chapters in document")
+            return self._process_chapters(chapters, base_metadata)
+        else:
+            logger.info("No chapters detected, using traditional chunking")
+            return self.process_text(cleaned_text, base_metadata)
+
     def process_text(
         self,
         text: str,
         base_metadata: Optional[Dict[str, Any]] = None
     ) -> List[DocumentChunk]:
         """
-        Process text into document chunks.
+        Process text into document chunks (fallback method).
         
         Args:
             text: Text content to process
@@ -123,21 +181,8 @@ class DocumentProcessor:
         Returns:
             List of document chunks
         """
-        # Check if text is empty or too short
-        if not text or len(text.strip()) < 10:
-            logger.warning("Text is empty or too short to process")
-            return []
-        
-        # Clean and normalize text
-        cleaned_text = self._clean_text(text)
-        
-        # Check if cleaned text is still valid
-        if not cleaned_text or len(cleaned_text.strip()) < 5:
-            logger.warning("Cleaned text is empty or too short")
-            return []
-        
         # Split into chunks
-        chunks = self._split_text(cleaned_text)
+        chunks = self._split_text(text)
         
         # Create DocumentChunk objects
         document_chunks = []
@@ -183,33 +228,46 @@ class DocumentProcessor:
                 metadata['grade'] = match.group(1)
                 break
         
-        # Extract subject
+        # Enhanced subject detection with more keywords
         subjects = {
-            'matematika': ['matematika', 'matek'],
-            'fizika': ['fizika'],
-            'kemia': ['kemia'],
-            'biologia': ['biologia'],
-            'tortenelem': ['tortenelem', 'tori'],
-            'foldrajz': ['foldrajz','termeszettudomany'],
-            'irodalom': ['irodalom'],
-            'nyelvtan': ['magyar', 'nyelvtan']
+            'matematika': ['matematika', 'matek', 'math', 'szamtan', 'algebra', 'geometria'],
+            'természettudomány': ['termeszettudomany', 'természettudomány', 'fizika', 'kemia', 
+                                'biologia', 'biológia', 'tudomany', 'tudomány'],
+            'irodalom': ['irodalom', 'olvasas', 'olvasás', 'literatura', 'vers', 'költészet'],
+            'történelem': ['tortenelem', 'történelem', 'history', 'tortenet', 'történet'],
+            'nyelvtan': ['magyar', 'nyelvtan', 'grammar', 'nyelv', 'fogalmazás'],
+            'földrajz': ['foldrajz', 'földrajz', 'geography', 'fold', 'föld', 'térkép']
         }
         
         for subject, keywords in subjects.items():
             for keyword in keywords:
                 if keyword in filename_lower:
                     metadata['subject'] = subject
+                    metadata['primary_subject'] = subject
                     break
             if 'subject' in metadata:
                 break
         
-        # Extract difficulty
-        if any(word in filename_lower for word in ['easy', 'konnyu', 'basic', 'kezdo']):
-            metadata['difficulty'] = 'konnyu'
-        elif any(word in filename_lower for word in ['hard', 'nehez', 'advanced', 'halado']):
-            metadata['difficulty'] = 'nehez'
-        elif any(word in filename_lower for word in ['medium', 'kozepes', 'intermediate']):
-            metadata['difficulty'] = 'kozepes'
+        # Enhanced difficulty detection
+        difficulty_patterns = {
+            'konnyu': ['easy', 'konnyu', 'könnyű', 'basic', 'kezdo', 'kezdő', 'alapfok'],
+            'nehez': ['hard', 'nehez', 'nehéz', 'advanced', 'halado', 'haladó', 'felsőfok'],
+            'kozepes': ['medium', 'kozepes', 'közepes', 'intermediate', 'közép']
+        }
+        
+        for difficulty, keywords in difficulty_patterns.items():
+            if any(word in filename_lower for word in keywords):
+                metadata['difficulty'] = difficulty
+                break
+        
+        # Add educational context markers
+        metadata['is_textbook'] = any(word in filename_lower for word in 
+                                    ['tankönyv', 'tankoenyv', 'könyv', 'koenyv', 'textbook', 'book'])
+        metadata['is_exercise'] = any(word in filename_lower for word in 
+                                    ['feladat', 'gyakorlat', 'exercise', 'practice', 'test'])
+        metadata['content_type'] = 'educational'
+        metadata['language'] = 'hungarian'
+        metadata['educational_level'] = 'elementary'  # Assuming 6th grade content
 
         return metadata
     
@@ -347,6 +405,206 @@ class DocumentProcessor:
             # Ensure we make progress
             if start <= len(chunks[-1]) if chunks else 0:
                 start = (len(chunks[-1]) if chunks else 0) + 1
+        
+        return chunks
+    
+    def _detect_chapters(self, text: str) -> List[Dict[str, Any]]:
+        """
+        Detect chapter boundaries and extract chapter information.
+        
+        Args:
+            text: Text content to analyze
+            
+        Returns:
+            List of chapter dictionaries with metadata
+        """
+        chapters = []
+        lines = text.split('\n')
+        current_chapter = None
+        chapter_content = []
+        
+        for i, line in enumerate(lines):
+            chapter_match = None
+            chapter_info = None
+            
+            # Try each chapter pattern
+            for pattern in CHAPTER_PATTERNS:
+                match = re.match(pattern, line.strip(), re.MULTILINE | re.IGNORECASE)
+                if match:
+                    chapter_match = match
+                    break
+            
+            if chapter_match:
+                # Save previous chapter if exists
+                if current_chapter and chapter_content:
+                    current_chapter['content'] = '\n'.join(chapter_content).strip()
+                    current_chapter['word_count'] = len(current_chapter['content'].split())
+                    if current_chapter['word_count'] >= 50:  # Only include substantial chapters
+                        chapters.append(current_chapter)
+                
+                # Extract chapter information
+                groups = chapter_match.groups()
+                if len(groups) >= 3:
+                    chapter_num, chapter_type, title = groups[0], groups[1], groups[2]
+                elif len(groups) == 2:
+                    chapter_num, title = groups[0], groups[1]
+                    chapter_type = "fejezet"
+                else:
+                    chapter_num = str(len(chapters) + 1)
+                    title = groups[0] if groups else f"Fejezet {len(chapters) + 1}"
+                    chapter_type = "fejezet"
+                
+                # Create new chapter
+                current_chapter = {
+                    'chapter_number': chapter_num,
+                    'chapter_type': chapter_type,
+                    'title': title.strip(),
+                    'start_line': i,
+                    'topics': self._extract_topics_from_title(title.strip())
+                }
+                chapter_content = [line]  # Include the chapter title
+            else:
+                if current_chapter:
+                    chapter_content.append(line)
+        
+        # Add the last chapter
+        if current_chapter and chapter_content:
+            current_chapter['content'] = '\n'.join(chapter_content).strip()
+            current_chapter['word_count'] = len(current_chapter['content'].split())
+            if current_chapter['word_count'] >= 50:
+                chapters.append(current_chapter)
+        
+        return chapters
+    
+    def _extract_topics_from_title(self, title: str) -> List[str]:
+        """Extract educational topics from chapter title."""
+        topics = []
+        title_lower = title.lower()
+        
+        # Check against subject keywords
+        for subject, keywords in SUBJECT_KEYWORDS.items():
+            for keyword in keywords:
+                if keyword in title_lower:
+                    topics.append(keyword)
+        
+        # Extract potential topics from title words
+        words = re.findall(r'[a-záéíóöőúüűA-ZÁÉÍÓÖŐÚÜŰ]{4,}', title)
+        for word in words[:3]:  # Limit to first 3 meaningful words
+            if len(word) >= 4:
+                topics.append(word.lower())
+        
+        return list(set(topics))  # Remove duplicates
+    
+    def _process_chapters(
+        self,
+        chapters: List[Dict[str, Any]],
+        base_metadata: Optional[Dict[str, Any]] = None
+    ) -> List[DocumentChunk]:
+        """
+        Process detected chapters into document chunks.
+        
+        Args:
+            chapters: List of chapter dictionaries
+            base_metadata: Base metadata for all chunks
+            
+        Returns:
+            List of document chunks with chapter metadata
+        """
+        document_chunks = []
+        
+        for i, chapter in enumerate(chapters):
+            # Create enhanced metadata for chapter
+            chapter_metadata = {
+                "chunk_index": i,
+                "chunk_count": len(chapters),
+                "chunk_type": "chapter",
+                "chapter_number": chapter['chapter_number'],
+                "chapter_type": chapter['chapter_type'],
+                "chapter_title": chapter['title'],
+                "topics": chapter['topics'],
+                "char_count": len(chapter['content']),
+                "word_count": chapter['word_count'],
+                "is_educational_content": True,
+            }
+            
+            # Merge with base metadata
+            if base_metadata:
+                chapter_metadata.update(base_metadata)
+                
+                # Enhanced subject detection using chapter content
+                subject = self._detect_subject_from_content(chapter['content'], chapter['title'])
+                if subject:
+                    chapter_metadata['subject'] = subject
+                    chapter_metadata['detected_subject'] = subject
+            
+            # Split very large chapters into sub-chunks if needed
+            if len(chapter['content']) > self.chunk_size * 2:
+                sub_chunks = self._split_large_chapter(chapter['content'])
+                for j, sub_chunk in enumerate(sub_chunks):
+                    sub_metadata = chapter_metadata.copy()
+                    sub_metadata.update({
+                        "chunk_index": f"{i}.{j}",
+                        "sub_chunk_index": j,
+                        "sub_chunk_count": len(sub_chunks),
+                        "char_count": len(sub_chunk),
+                        "word_count": len(sub_chunk.split())
+                    })
+                    
+                    chunk = DocumentChunk(
+                        content=sub_chunk,
+                        metadata=sub_metadata
+                    )
+                    document_chunks.append(chunk)
+            else:
+                chunk = DocumentChunk(
+                    content=chapter['content'],
+                    metadata=chapter_metadata
+                )
+                document_chunks.append(chunk)
+        
+        return document_chunks
+    
+    def _detect_subject_from_content(self, content: str, title: str) -> Optional[str]:
+        """Detect subject from chapter content and title."""
+        combined_text = (title + " " + content).lower()
+        
+        subject_scores = {}
+        for subject, keywords in SUBJECT_KEYWORDS.items():
+            score = sum(1 for keyword in keywords if keyword in combined_text)
+            if score > 0:
+                subject_scores[subject] = score
+        
+        if subject_scores:
+            return max(subject_scores, key=subject_scores.get)
+        return None
+    
+    def _split_large_chapter(self, content: str) -> List[str]:
+        """Split large chapters into smaller sub-chunks while preserving coherence."""
+        # Try to split at paragraph boundaries first
+        paragraphs = content.split('\n\n')
+        chunks = []
+        current_chunk = ""
+        
+        for paragraph in paragraphs:
+            if len(current_chunk) + len(paragraph) > self.chunk_size:
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                    current_chunk = paragraph
+                else:
+                    # Paragraph itself is too long, split by sentences
+                    sentences = re.split(r'[.!?]+\s+', paragraph)
+                    for sentence in sentences:
+                        if len(current_chunk) + len(sentence) > self.chunk_size:
+                            if current_chunk:
+                                chunks.append(current_chunk.strip())
+                            current_chunk = sentence
+                        else:
+                            current_chunk += " " + sentence if current_chunk else sentence
+            else:
+                current_chunk += "\n\n" + paragraph if current_chunk else paragraph
+        
+        if current_chunk:
+            chunks.append(current_chunk.strip())
         
         return chunks
     

@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     # 📄 Document Processing
     CHUNK_SIZE: int = Field(default=500, env="CHUNK_SIZE")
     CHUNK_OVERLAP: int = Field(default=50, env="CHUNK_OVERLAP")
+    
+    # 🎯 AI Response Settings
+    DEFAULT_MAX_TOKENS: int = Field(default=1000, env="DEFAULT_MAX_TOKENS")
+    RAG_MAX_TOKENS: int = Field(default=1000, env="RAG_MAX_TOKENS")
+    AI_TUTOR_MAX_TOKENS: int = Field(default=800, env="AI_TUTOR_MAX_TOKENS")
+    AI_CHAT_MAX_TOKENS: int = Field(default=1000, env="AI_CHAT_MAX_TOKENS")
+    AI_QUESTION_GENERATION_MAX_TOKENS: int = Field(default=1200, env="AI_QUESTION_GENERATION_MAX_TOKENS")
 
     class Config:
         env_file = ".env"
