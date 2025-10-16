@@ -10,8 +10,6 @@ import logging
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
-import os
-from pathlib import Path
 
 from ..config import settings
 

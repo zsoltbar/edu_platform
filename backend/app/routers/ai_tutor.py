@@ -7,7 +7,6 @@ from app.routers.rag import get_rag_pipeline
 from app.config import get_settings
 import difflib
 import json
-import asyncio
 import logging
 
 settings = get_settings()
